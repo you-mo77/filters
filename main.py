@@ -5,6 +5,7 @@ import soundfile as sf
 import matplotlib.pyplot as plt
 import PySimpleGUI as sg
 
+#フィルタリング関数(できればフィルタリングのみの動作にとどめて機能を分けたい)
 def filtering(spectrum, flag):
     #スペクトルを逆FFTしてインパルス応答へ
     h = np.real(np.fft.ifft(spectrum))
@@ -17,9 +18,7 @@ def filtering(spectrum, flag):
     result = np.convolve(data.astype(float),shifted_h)
 
     #出力
-    if flag == 0:
-        print("noob")
-    elif flag == 1:
+    if flag == 1:
         sf.write(f"~{fh}hz.wav",result,fs)
     elif flag == 2:
         sf.write(f"{fl}hz~.wav",result,fs)

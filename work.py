@@ -1,5 +1,3 @@
-#wav64 に対応してない　wav32にする
-
 import numpy as np
 import librosa as lib
 import soundfile as sf
@@ -9,7 +7,11 @@ import wave
 import sys
 
 #コールバック関数
+def callback(in_data, frame_count, time_info, status):
+    output_data = data[start_pos:start_pos + frame_count]
+    start_pos += frame_count
 
+    return (output_data, pa.paContinue)
 
 #新フィルタ関数
 def filtering0(h: np.ndarray, data: np.ndarray, range_num: int):
@@ -53,9 +55,51 @@ def init(tap: int, fc: list, fs: int, range_num: int):
         h[i] = np.roll(h[i],int(h[i].shape[0] / 2))
 
     return h
-    
+
 #main関数
 def main():
+    #初期値代入
+    tap = 1024
+    range_num = 3
+
+    #音声取得
+    global data, fs
+    data, fs = lib.load("input.true.wav",mono=False)
+
+    #カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
+    fc = [0,700,7000,int(fs/2)]
+
+    #インパルス応答
+    h = init(tap, fc, fs, range_num)
+
+    #スタート位置
+    global start_pos
+    start_pos = 0
+
+    #pyaudioインスタンス
+    p = pa.PyAudio()
+
+    #ストリーム
+    
+    stream = p.open(format=pa.paInt16,
+                    channels=data.shape[0],
+                    rate=fs,
+                    output=True,
+                    stream_callback=callback)
+
+    while stream.is_active():
+        time.sleep(0.1)
+    
+
+    stream.close()
+
+    p.terminate()
+
+#main
+if __name__ == "__main__":
+    main()
+
+"""
     #初期値代入
     tap = 1024
     fc = [0,700,7000, 11025]
@@ -106,14 +150,7 @@ def main():
         stream.close()
 
         p.terminate()
-        
-
-
-#main
-if __name__ == "__main__":
-    main()
-
-
+"""
 
 ###debug###
 #出力

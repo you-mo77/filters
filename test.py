@@ -1,3 +1,3 @@
-import pyaudio as pa
+import librosa as lib
+import numpy as np
 
-p = pa.PyAudio()

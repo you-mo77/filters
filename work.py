@@ -5,13 +5,48 @@ import pyaudio as pa
 import time 
 import wave 
 import sys
+import struct
+
+
+#音声取得
+data, fs = lib.load("crystalized.short.wav",mono=False, sr=48000)
+
+n = np.array([
+    [1, 2, 3, 4, 5],
+    [6, 7, 8, 9, 10],
+])
+print(n.shape)
+print(n[:, 1:3])
+print(np.ravel(n[:, 1:3].transpose()))
+# exit()
+
+#スタート位置
+start_pos = 0
 
 #コールバック関数
 def callback(in_data, frame_count, time_info, status):
-    output_data = data[start_pos:start_pos + frame_count]
+    global start_pos, data, fs
+    
+    # 切り出す(ステレオ->2行frame_count列　)
+    output_data = data[:, start_pos:(start_pos + frame_count)]
+    # 転置(行と列入れ替え[左1, 右1],[左2, 右2],・・・)
+    output_data = output_data.transpose()
+    # １行に([左1, 右1, 左2, 右2, ・・・])
+    output_data = np.ravel(output_data)
+    #バイト形式に変換
+    byte_data = output_data.tobytes('C')
+
+    #print("before ravel: ", output_data.shape)
+    #切り出し位置更新
     start_pos += frame_count
 
-    return (output_data, pa.paContinue)
+    #output_data = bytes([0xff for x in range(frame_count*2)] + [0 for x in range(frame_count*2)])
+    #print({"frame_count": frame_count ,"start_pos": start_pos})
+    #print("after ravel: ", output_data.shape)
+    #print(len(byte_data))
+
+    #再生
+    return (byte_data, pa.paContinue)
 
 #新フィルタ関数
 def filtering0(h: np.ndarray, data: np.ndarray, range_num: int):
@@ -62,9 +97,7 @@ def main():
     tap = 1024
     range_num = 3
 
-    #音声取得
-    global data, fs
-    data, fs = lib.load("input.true.wav",mono=False)
+    #元の音声取得位置
 
     #カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
     fc = [0,700,7000,int(fs/2)]
@@ -72,25 +105,24 @@ def main():
     #インパルス応答
     h = init(tap, fc, fs, range_num)
 
-    #スタート位置
-    global start_pos
-    start_pos = 0
-
     #pyaudioインスタンス
     p = pa.PyAudio()
 
     #ストリーム
+
+    print(f"opening {data.shape[0]} channels")
     
-    stream = p.open(format=pa.paInt16,
-                    channels=data.shape[0],
+    stream = p.open(format=pa.paFloat32,
+                    channels=2,
                     rate=fs,
                     output=True,
-                    stream_callback=callback)
+                    stream_callback=callback,
+                    frames_per_buffer=8192)
 
     while stream.is_active():
         time.sleep(0.1)
     
-
+    print("terminated")
     stream.close()
 
     p.terminate()

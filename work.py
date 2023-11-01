@@ -7,34 +7,48 @@ import wave
 import sys
 import struct
 
-
 #音声取得
-data, fs = lib.load("crystalized.short.wav",mono=False, sr=48000)
+data, fs = lib.load("input.true.wav",mono=False, sr=48000)
+print(data.shape)
+total = np.zeros((2,1))
 
+"""
 n = np.array([
     [1, 2, 3, 4, 5],
     [6, 7, 8, 9, 10],
 ])
-print(n.shape)
-print(n[:, 1:3])
-print(np.ravel(n[:, 1:3].transpose()))
-# exit()
+print(n)
+print(n.shape[1])
+#print(n[:, 1:3])
+#print(np.ravel(n[:, 1:3].transpose()))
+
+exit()
+"""
 
 #スタート位置
 start_pos = 0
 
 #コールバック関数
-def callback(in_data, frame_count, time_info, status):
+def callback(frame_count,h):
+    global total
     global start_pos, data, fs
     
     # 切り出す(ステレオ->2行frame_count列　)
     output_data = data[:, start_pos:(start_pos + frame_count)]
+    #フィルタリング
+    filtered_data = np.zeros((2, (int(h[0].shape[0]) + int(output_data[0].shape[0]) - 1)))
+    if output_data.shape[1] != 0:
+        filtered_data[0] = filtering0(h, output_data[0])
+        filtered_data[1] = filtering0(h, output_data[1])
+
+    total = np.append(total,filtered_data, axis=1)
+    
     # 転置(行と列入れ替え[左1, 右1],[左2, 右2],・・・)
-    output_data = output_data.transpose()
+    filtered_data = filtered_data.transpose()
     # １行に([左1, 右1, 左2, 右2, ・・・])
-    output_data = np.ravel(output_data)
+    filtered_data = np.ravel(filtered_data)
     #バイト形式に変換
-    byte_data = output_data.tobytes('C')
+    byte_data = filtered_data.tobytes('C')
 
     #print("before ravel: ", output_data.shape)
     #切り出し位置更新
@@ -49,10 +63,11 @@ def callback(in_data, frame_count, time_info, status):
     return (byte_data, pa.paContinue)
 
 #新フィルタ関数
-def filtering0(h: np.ndarray, data: np.ndarray, range_num: int):
+def filtering0(h: np.ndarray, data: np.ndarray):
 
     #フィルタ適用
-    filtered0 = np.zeros((range_num,int(h[0].shape[0]) + int(data.shape[0]) - 1))
+    filtered0 = np.zeros((int(h[0].shape[0]) + int(data.shape[0]) - 1))
+    print(data)
     filtered0 = np.convolve(data,h[0])
     
     return filtered0
@@ -116,13 +131,17 @@ def main():
                     channels=2,
                     rate=fs,
                     output=True,
-                    stream_callback=callback,
+                    stream_callback=lambda a,b,c,d:callback(b,h),
                     frames_per_buffer=8192)
 
     while stream.is_active():
         time.sleep(0.1)
     
     print("terminated")
+    #print(total.shape)
+    sf.write("output.wav",total[0],fs)
+
+
     stream.close()
 
     p.terminate()

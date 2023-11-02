@@ -3,15 +3,16 @@ import librosa as lib
 import soundfile as sf
 import pyaudio as pa
 import time 
-import wave 
-import sys
-import struct
+from scipy import signal
 
 #音声取得
-data, fs = lib.load("input.true.wav",mono=False, sr=48000)
-print(data.shape)
-total = np.zeros((2,1))
+data, fs = lib.load("crystalized.short.wav",mono=False, sr=48000)
+#print(f"data:{data.dtype}")
+#data = data.astype(np.float64)
+#print(f"data2:{data.dtype}")
 
+
+total = np.zeros((2,0))
 """
 n = np.array([
     [1, 2, 3, 4, 5],
@@ -29,24 +30,38 @@ exit()
 start_pos = 0
 
 #コールバック関数
-def callback(frame_count,h):
+def callback(frame_count,h,fc):
     global total
     global start_pos, data, fs
     
     # 切り出す(ステレオ->2行frame_count列　)
     output_data = data[:, start_pos:(start_pos + frame_count)]
+    #print(f"output_data:{output_data.dtype}")
+
     #フィルタリング
-    filtered_data = np.zeros((2, (int(h[0].shape[0]) + int(output_data[0].shape[0]) - 1)))
+    #filtered_data = np.zeros((2, (int(h[0].shape[0]) + int(output_data[0].shape[0]) - 1)))
+    filtered_data = np.zeros(output_data.shape)
     if output_data.shape[1] != 0:
-        filtered_data[0] = filtering0(h, output_data[0])
-        filtered_data[1] = filtering0(h, output_data[1])
+        filtered_data[0] = filter0(fc,output_data[0])
+        filtered_data[1] = filter0(fc,output_data[1])
+    #print(f"filtered_data1:{filtered_data.dtype}")
+    filtered_data = filtered_data.astype(np.float32)
+    #print(f"filtered_data2:{filtered_data.dtype}")
+
 
     total = np.append(total,filtered_data, axis=1)
-    
+
+    #sf.write("in_callback.wav",total.T,fs,format="wav")
+    #print(type(filtered_data))
+    print(f"filtered_data:{filtered_data.dtype}")
+
     # 転置(行と列入れ替え[左1, 右1],[左2, 右2],・・・)
-    filtered_data = filtered_data.transpose()
+    filtered_data = filtered_data.T
+
+    #byte形式に直すのがうまくいってない(フィルタ後の音声はきれいに聞こえた) 
     # １行に([左1, 右1, 左2, 右2, ・・・])
     filtered_data = np.ravel(filtered_data)
+
     #バイト形式に変換
     byte_data = filtered_data.tobytes('C')
 
@@ -62,7 +77,7 @@ def callback(frame_count,h):
     #再生
     return (byte_data, pa.paContinue)
 
-#新フィルタ関数
+#フィルタ関数
 def filtering0(h: np.ndarray, data: np.ndarray):
 
     #フィルタ適用
@@ -85,6 +100,16 @@ def filtering2(h: np.ndarray, data: np.ndarray, range_num: int):
     filtered2 = np.convolve(data,h[2])
     
     return filtered2
+
+#新フィルタ関数
+def filter0(fc, data:np.ndarray):
+    
+    nyquist_freq = 0.5 * fs
+    normal_cutoff = fc[2] / nyquist_freq
+    b, a = signal.butter(7, normal_cutoff, btype='low')
+    filtered_signal = signal.filtfilt(b, a, data)
+
+    return filtered_signal
 
 #インパルス応答作成まで
 def init(tap: int, fc: list, fs: int, range_num: int):
@@ -115,7 +140,7 @@ def main():
     #元の音声取得位置
 
     #カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
-    fc = [0,700,7000,int(fs/2)]
+    fc = [0,700,7000,23999]
 
     #インパルス応答
     h = init(tap, fc, fs, range_num)
@@ -131,20 +156,22 @@ def main():
                     channels=2,
                     rate=fs,
                     output=True,
-                    stream_callback=lambda a,b,c,d:callback(b,h),
-                    frames_per_buffer=8192)
+                    stream_callback=lambda a,b,c,d:callback(b,h ,fc),
+                    frames_per_buffer=11857608)
 
     while stream.is_active():
         time.sleep(0.1)
     
     print("terminated")
     #print(total.shape)
-    sf.write("output.wav",total[0],fs)
+    sf.write("output_new.wav",total.T,fs,format="wav")
 
 
     stream.close()
 
     p.terminate()
+
+    return 
 
 #main
 if __name__ == "__main__":

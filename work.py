@@ -16,6 +16,9 @@ total1 = np.zeros((2,0))
 total2 = np.zeros((2,0))
 total3 = np.zeros((2,0))
 
+buffer_size = 48000
+ex_buffer = np.zeros((2,buffer_size))
+
 """
 n = np.array([
     [1, 2, 3, 4, 5],
@@ -33,7 +36,7 @@ exit()
 start_pos = 0
 
 #コールバック関数
-def callback(frame_count,h,fc):
+def callback(frame_count,fc):
     global total1,total2,total3
     global start_pos, data, fs
     
@@ -147,6 +150,7 @@ def filter3(fc, data:np.ndarray):
     return filtered_signal
 
 #インパルス応答作成まで
+"""
 def init(tap: int, fc: list, fs: int, range_num: int):
 
     #タップ数に調整
@@ -165,6 +169,7 @@ def init(tap: int, fc: list, fs: int, range_num: int):
         h[i] = np.roll(h[i],int(h[i].shape[0] / 2))
 
     return h
+"""
 
 #main関数
 def main():
@@ -178,7 +183,7 @@ def main():
     fc = [0,700,7000,23999]
 
     #インパルス応答
-    h = init(tap, fc, fs, range_num)
+    #h = init(tap, fc, fs, range_num)
 
     #pyaudioインスタンス
     p = pa.PyAudio()
@@ -191,17 +196,17 @@ def main():
                     channels=2,
                     rate=fs,
                     output=True,
-                    stream_callback=lambda a,b,c,d:callback(b,h ,fc),
-                    frames_per_buffer=48000)
+                    stream_callback=lambda a,b,c,d:callback(b,fc),
+                    frames_per_buffer=buffer_size)
 
     while stream.is_active():
         time.sleep(0.1)
     
     print("terminated")
     #print(total1.shape)
-    sf.write("output1.wav",total1.T,fs,format="wav")
-    sf.write("output2.wav",total2.T,fs,format="wav")
-    sf.write("output3.wav",total3.T,fs,format="wav")
+    sf.write("output1'.wav",total1.T,fs,format="wav")
+    sf.write("output2'.wav",total2.T,fs,format="wav")
+    sf.write("output3'.wav",total3.T,fs,format="wav")
 
 
     stream.close()

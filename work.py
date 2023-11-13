@@ -6,7 +6,7 @@ import time
 from scipy import signal
 
 #音声取得
-data, fs = lib.load("crystalized_short.wav",mono=False, sr=48000)
+data, fs = lib.load("crystalized_1.wav",mono=False, sr=48000)
 #print(f"data:{data.dtype}")
 #data = data.astype(np.float64)
 #print(f"data2:{data.dtype}")
@@ -77,6 +77,12 @@ def callback(frame_count,fc):
     filtered_data2 = filtered_data2.astype(np.float32)
     filtered_data3 = filtered_data3.astype(np.float32)
 
+    #正規化チックなもの(クリッピング対策)もとの音声よりかなりボリュームが減っているため、出力側で問題がなければ消すべき
+    """
+    filtered_data1 /= 2
+    filtered_data2 /= 2
+    filtered_data3 /= 2
+    """
     """
     for i in range(buffer_size):
         filtered_data1[0,i] *= (i/(buffer_size/2))
@@ -238,9 +244,9 @@ def main():
     
     print("terminated")
     #print(total1.shape)
-    sf.write("output1.new.wav",total1.T,fs,format="wav")
-    sf.write("output2.new.wav",total2.T,fs,format="wav")
-    sf.write("output3.new.wav",total3.T,fs,format="wav")
+    sf.write("output11.new.wav",total1.T,fs,format="wav")
+    sf.write("output22.new.wav",total2.T,fs,format="wav")
+    sf.write("output33.new.wav",total3.T,fs,format="wav")
 
 
     stream.close()

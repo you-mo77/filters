@@ -49,7 +49,7 @@ def callback(frame_count,fc):
     output_data = data[:, start_pos:(start_pos + frame_count)]
     #print(f"output_data:{output_data.dtype}")
 
-    #フィルタリング用配列(前回バッファと今回バッファをまとめる)
+    #フィルタリング用配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
     for_filter_array = np.hstack((ex_buffer,output_data))
     for i in range(int(for_filter_array.shape[1]//2)):
         for_filter_array[:,i] *= ((i + 1)/int(for_filter_array.shape[1]//2))
@@ -95,19 +95,14 @@ def callback(frame_count,fc):
     #print(f"filtered_data2:{filtered_data.dtype}")
     """
 
+    #出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく)
     total1 = np.append(total1,np.zeros(output_data.shape), axis=1)
-    #print(int(for_filter_array.shape[1]))
     total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data1
-    #total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] /= np.max(total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))])
-    #print(np.max(total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))]))
     total2 = np.append(total2,np.zeros(output_data.shape), axis=1)
     total2[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data2
-
     total3 = np.append(total3,np.zeros(output_data.shape), axis=1)
     total3[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data3
     
-
-
     #sf.write("in_callback.wav",total1.T,fs,format="wav")
     #print(type(filtered_data))
     #print(f"filtered_data:{filtered_data.dtype}")
@@ -243,9 +238,9 @@ def main():
     
     print("terminated")
     #print(total1.shape)
-    sf.write("output1'.wav",total1.T,fs,format="wav")
-    sf.write("output2'.wav",total2.T,fs,format="wav")
-    sf.write("output3'.wav",total3.T,fs,format="wav")
+    sf.write("output1.new.wav",total1.T,fs,format="wav")
+    sf.write("output2.new.wav",total2.T,fs,format="wav")
+    sf.write("output3.new.wav",total3.T,fs,format="wav")
 
 
     stream.close()

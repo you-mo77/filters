@@ -12,12 +12,16 @@ data, fs = lib.load("crystalized_short.wav",mono=False, sr=48000)
 #print(f"data2:{data.dtype}")
 
 
-total1 = np.zeros((2,0))
-total2 = np.zeros((2,0))
-total3 = np.zeros((2,0))
 
+flag = 0
 buffer_size = 48000
 ex_buffer = np.zeros((2,buffer_size))
+for_filter_array = np.zeros((2,buffer_size * 2))
+
+
+total1 = np.zeros((2,buffer_size))
+total2 = np.zeros((2,buffer_size))
+total3 = np.zeros((2,buffer_size))
 
 """
 n = np.array([
@@ -39,35 +43,70 @@ start_pos = 0
 def callback(frame_count,fc):
     global total1,total2,total3
     global start_pos, data, fs
+    global ex_buffer
     
     # 切り出す(ステレオ->2行frame_count列　)
     output_data = data[:, start_pos:(start_pos + frame_count)]
     #print(f"output_data:{output_data.dtype}")
 
+    #フィルタリング用配列(前回バッファと今回バッファをまとめる)
+    for_filter_array = np.hstack((ex_buffer,output_data))
+    for i in range(int(for_filter_array.shape[1]//2)):
+        for_filter_array[:,i] *= ((i + 1)/int(for_filter_array.shape[1]//2))
+        for_filter_array[:,int(for_filter_array.shape[1]) - 1 - i] *= ((i + 1)/int(for_filter_array.shape[1]//2))
+    ex_buffer = output_data
+    #print(for_filter_array.shape)
+
     #フィルタリング
     #filtered_data = np.zeros((2, (int(h[0].shape[0]) + int(output_data[0].shape[0]) - 1)))
-    filtered_data1 = np.zeros(output_data.shape)
-    filtered_data2 = np.zeros(output_data.shape)
-    filtered_data3 = np.zeros(output_data.shape)
+    filtered_data1 = np.zeros(for_filter_array.shape)
+    filtered_data2 = np.zeros(for_filter_array.shape)
+    filtered_data3 = np.zeros(for_filter_array.shape)
 
-    if output_data.shape[1] != 0:
-        filtered_data1[0] = filter1(fc,output_data[0])
-        filtered_data1[1] = filter1(fc,output_data[1])
-        filtered_data2[0] = filter2(fc,output_data[0])
-        filtered_data2[1] = filter2(fc,output_data[1])        
-        filtered_data3[0] = filter3(fc,output_data[0])
-        filtered_data3[1] = filter3(fc,output_data[1])
+    if for_filter_array.shape[1] != 0:
+        filtered_data1[0] = filter1(fc,for_filter_array[0])
+        filtered_data1[1] = filter1(fc,for_filter_array[1])
+        filtered_data2[0] = filter2(fc,for_filter_array[0])
+        filtered_data2[1] = filter2(fc,for_filter_array[1])        
+        filtered_data3[0] = filter3(fc,for_filter_array[0])
+        filtered_data3[1] = filter3(fc,for_filter_array[1])
 
+    #dtype修正
     #print(f"filtered_data1:{filtered_data.dtype}")
     filtered_data1 = filtered_data1.astype(np.float32)
     filtered_data2 = filtered_data2.astype(np.float32)
     filtered_data3 = filtered_data3.astype(np.float32)
+
+    """
+    for i in range(buffer_size):
+        filtered_data1[0,i] *= (i/(buffer_size/2))
+        filtered_data2[0,i] *= (i/(buffer_size/2))
+        filtered_data3[0,i] *= (i/(buffer_size/2))
+        filtered_data1[1,i] *= (i/(buffer_size/2))
+        filtered_data2[1,i] *= (i/(buffer_size/2))
+        filtered_data3[1,i] *= (i/(buffer_size/2))
+    for i in range(buffer_size):
+        filtered_data1[0,int(filtered_data1.shape[1])-1-i] *= (i/(buffer_size/2))
+        filtered_data2[0,int(filtered_data2.shape[1])-1-i] *= (i/(buffer_size/2))
+        filtered_data3[0,int(filtered_data3.shape[1])-1-i] *= (i/(buffer_size/2))
+        filtered_data1[1,int(filtered_data1.shape[1])-1-i] *= (i/(buffer_size/2))
+        filtered_data2[1,int(filtered_data2.shape[1])-1-i] *= (i/(buffer_size/2))
+        filtered_data3[1,int(filtered_data3.shape[1])-1-i] *= (i/(buffer_size/2))
     #print(f"filtered_data2:{filtered_data.dtype}")
+    """
 
+    total1 = np.append(total1,np.zeros(output_data.shape), axis=1)
+    #print(int(for_filter_array.shape[1]))
+    total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data1
+    #total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] /= np.max(total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))])
+    #print(np.max(total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))]))
+    total2 = np.append(total2,np.zeros(output_data.shape), axis=1)
+    total2[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data2
 
-    total1 = np.append(total1,filtered_data1, axis=1)
-    total2 = np.append(total2,filtered_data2, axis=1)
-    total3 = np.append(total3,filtered_data3, axis=1)
+    total3 = np.append(total3,np.zeros(output_data.shape), axis=1)
+    total3[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data3
+    
+
 
     #sf.write("in_callback.wav",total1.T,fs,format="wav")
     #print(type(filtered_data))

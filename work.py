@@ -6,18 +6,15 @@ import time
 from scipy import signal
 
 #音声取得
-data, fs = lib.load("crystalized_1.wav",mono=False, sr=48000)
+data, fs = lib.load("crystalized_2.wav",mono=False, sr=48000)
 #print(f"data:{data.dtype}")
 #data = data.astype(np.float64)
 #print(f"data2:{data.dtype}")
-
-
 
 flag = 0
 buffer_size = 48000
 ex_buffer = np.zeros((2,buffer_size))
 for_filter_array = np.zeros((2,buffer_size * 2))
-
 
 total1 = np.zeros((2,buffer_size))
 total2 = np.zeros((2,buffer_size))
@@ -47,13 +44,24 @@ def callback(frame_count,fc):
     
     # 切り出す(ステレオ->2行frame_count列　)
     output_data = data[:, start_pos:(start_pos + frame_count)]
-    #print(f"output_data:{output_data.dtype}")
+    print(output_data)
 
     #フィルタリング用配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
     for_filter_array = np.hstack((ex_buffer,output_data))
+    #print(int(for_filter_array.shape[1]//2))
+    if int(for_filter_array.shape[1]) <= buffer_size:
+        for i in range(int(for_filter_array.shape[1])):
+            for_filter_array[:,i] *= ((i + 1)/buffer_size)
+    else:
+        for i in range(buffer_size):
+            for_filter_array[:,i] *= ((i + 1)/buffer_size)
+        for i in range(int(for_filter_array.shape[1] - buffer_size)):
+            for_filter_array[:,int(for_filter_array.shape[1]) - 1 - i] *= ((i + 1)/buffer_size)
+    """
     for i in range(int(for_filter_array.shape[1]//2)):
-        for_filter_array[:,i] *= ((i + 1)/int(for_filter_array.shape[1]//2))
-        for_filter_array[:,int(for_filter_array.shape[1]) - 1 - i] *= ((i + 1)/int(for_filter_array.shape[1]//2))
+        for_filter_array[:,i] *= ((i + 1)/buffer_size)
+        #for_filter_array[:,int(for_filter_array.shape[1]) - 1 - i] *= ((i + 1)/buffer_size)
+    """
     ex_buffer = output_data
     #print(for_filter_array.shape)
 
@@ -63,6 +71,8 @@ def callback(frame_count,fc):
     filtered_data2 = np.zeros(for_filter_array.shape)
     filtered_data3 = np.zeros(for_filter_array.shape)
 
+    zero = np.zeros(2*frame_count,dtype=np.float32).tobytes('C')
+
     if for_filter_array.shape[1] != 0:
         filtered_data1[0] = filter1(fc,for_filter_array[0])
         filtered_data1[1] = filter1(fc,for_filter_array[1])
@@ -71,70 +81,74 @@ def callback(frame_count,fc):
         filtered_data3[0] = filter3(fc,for_filter_array[0])
         filtered_data3[1] = filter3(fc,for_filter_array[1])
 
-    #dtype修正
-    #print(f"filtered_data1:{filtered_data.dtype}")
-    filtered_data1 = filtered_data1.astype(np.float32)
-    filtered_data2 = filtered_data2.astype(np.float32)
-    filtered_data3 = filtered_data3.astype(np.float32)
+        #dtype修正
+        #print(f"filtered_data1:{filtered_data.dtype}")
+        filtered_data1 = filtered_data1.astype(np.float32)
+        filtered_data2 = filtered_data2.astype(np.float32)
+        filtered_data3 = filtered_data3.astype(np.float32)
 
-    #正規化チックなもの(クリッピング対策)もとの音声よりかなりボリュームが減っているため、出力側で問題がなければ消すべき
-    """
-    filtered_data1 /= 2
-    filtered_data2 /= 2
-    filtered_data3 /= 2
-    """
-    """
-    for i in range(buffer_size):
-        filtered_data1[0,i] *= (i/(buffer_size/2))
-        filtered_data2[0,i] *= (i/(buffer_size/2))
-        filtered_data3[0,i] *= (i/(buffer_size/2))
-        filtered_data1[1,i] *= (i/(buffer_size/2))
-        filtered_data2[1,i] *= (i/(buffer_size/2))
-        filtered_data3[1,i] *= (i/(buffer_size/2))
-    for i in range(buffer_size):
-        filtered_data1[0,int(filtered_data1.shape[1])-1-i] *= (i/(buffer_size/2))
-        filtered_data2[0,int(filtered_data2.shape[1])-1-i] *= (i/(buffer_size/2))
-        filtered_data3[0,int(filtered_data3.shape[1])-1-i] *= (i/(buffer_size/2))
-        filtered_data1[1,int(filtered_data1.shape[1])-1-i] *= (i/(buffer_size/2))
-        filtered_data2[1,int(filtered_data2.shape[1])-1-i] *= (i/(buffer_size/2))
-        filtered_data3[1,int(filtered_data3.shape[1])-1-i] *= (i/(buffer_size/2))
-    #print(f"filtered_data2:{filtered_data.dtype}")
-    """
+        #正規化チックなもの(クリッピング対策)もとの音声よりかなりボリュームが減っているため、出力側で問題がなければ消すべき
+        filtered_data1 /= 2
+        filtered_data2 /= 2
+        filtered_data3 /= 2
+        
+        """
+        for i in range(buffer_size):
+            filtered_data1[0,i] *= (i/(buffer_size/2))
+            filtered_data2[0,i] *= (i/(buffer_size/2))
+            filtered_data3[0,i] *= (i/(buffer_size/2))
+            filtered_data1[1,i] *= (i/(buffer_size/2))
+            filtered_data2[1,i] *= (i/(buffer_size/2))
+            filtered_data3[1,i] *= (i/(buffer_size/2))
+        for i in range(buffer_size):
+            filtered_data1[0,int(filtered_data1.shape[1])-1-i] *= (i/(buffer_size/2))
+            filtered_data2[0,int(filtered_data2.shape[1])-1-i] *= (i/(buffer_size/2))
+            filtered_data3[0,int(filtered_data3.shape[1])-1-i] *= (i/(buffer_size/2))
+            filtered_data1[1,int(filtered_data1.shape[1])-1-i] *= (i/(buffer_size/2))
+            filtered_data2[1,int(filtered_data2.shape[1])-1-i] *= (i/(buffer_size/2))
+            filtered_data3[1,int(filtered_data3.shape[1])-1-i] *= (i/(buffer_size/2))
+        #print(f"filtered_data2:{filtered_data.dtype}")
+        """
 
-    #出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく)
-    total1 = np.append(total1,np.zeros(output_data.shape), axis=1)
-    total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data1
-    total2 = np.append(total2,np.zeros(output_data.shape), axis=1)
-    total2[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data2
-    total3 = np.append(total3,np.zeros(output_data.shape), axis=1)
-    total3[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data3
-    
-    #sf.write("in_callback.wav",total1.T,fs,format="wav")
-    #print(type(filtered_data))
-    #print(f"filtered_data:{filtered_data.dtype}")
+        #出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく)
+        total1 = np.append(total1,np.zeros(output_data.shape), axis=1)
+        total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data1
+        total2 = np.append(total2,np.zeros(output_data.shape), axis=1)
+        total2[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data2
+        total3 = np.append(total3,np.zeros(output_data.shape), axis=1)
+        total3[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data3
+        
+        #sf.write("in_callback.wav",total1.T,fs,format="wav")
+        #print(type(filtered_data))
+        #print(f"filtered_data:{filtered_data.dtype}")
 
-    # 転置(行と列入れ替え[左1, 右1],[左2, 右2],・・・)
-    filtered_data1 = filtered_data1.T
+        # 転置(行と列入れ替え[左1, 右1],[左2, 右2],・・・)
+        filtered_data1 = filtered_data1.T
 
-    #byte形式に直すのがうまくいってない(フィルタ後の音声はきれいに聞こえた) 
-    # １行に([左1, 右1, 左2, 右2, ・・・])
-    filtered_data1 = np.ravel(filtered_data1)
+        #byte形式に直すのがうまくいってない(フィルタ後の音声はきれいに聞こえた) 
+        # １行に([左1, 右1, 左2, 右2, ・・・])
+        filtered_data1 = np.ravel(filtered_data1)
 
-    #バイト形式に変換
-    byte_data = filtered_data1.tobytes('C')
+        #バイト形式に変換
+        #byte_data = filtered_data1.tobytes('C')
 
-    #print("before ravel: ", output_data.shape)
-    #切り出し位置更新
-    start_pos += frame_count
+        #print("before ravel: ", output_data.shape)
+        #切り出し位置更新
+        start_pos += frame_count
 
-    #output_data = bytes([0xff for x in range(frame_count*2)] + [0 for x in range(frame_count*2)])
-    #print({"frame_count": frame_count ,"start_pos": start_pos})
-    #print("after ravel: ", output_data.shape)
-    #print(len(byte_data))
+        #output_data = bytes([0xff for x in range(frame_count*2)] + [0 for x in range(frame_count*2)])
+        #print({"frame_count": frame_count ,"start_pos": start_pos})
+        #print("after ravel: ", output_data.shape)
 
-    #再生
-    return (byte_data, pa.paContinue)
-    #return(b'',pa.paContinue)
+        #print(len(byte_data))
+
+        #callback終了
+        return (zero, pa.paContinue)
+    else:
+        return (b'',pa.paContinue)        
+
+
+
 #フィルタ関数
 """
 def filtering0(h: np.ndarray, data: np.ndarray):
@@ -244,9 +258,9 @@ def main():
     
     print("terminated")
     #print(total1.shape)
-    sf.write("output11.new.wav",total1.T,fs,format="wav")
-    sf.write("output22.new.wav",total2.T,fs,format="wav")
-    sf.write("output33.new.wav",total3.T,fs,format="wav")
+    sf.write("output1.new.wav",total1.T,fs,format="wav")
+    sf.write("output2.new.wav",total2.T,fs,format="wav")
+    sf.write("output3.new.wav",total3.T,fs,format="wav")
 
 
     stream.close()

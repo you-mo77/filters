@@ -8,7 +8,8 @@ from scipy import signal
 num = 6
 
 #音声取得
-data, fs = lib.load(f"crystalized_{num}.wav",mono=False, sr=48000)
+#data, fs = lib.load(f"crystalized_{num}.wav",mono=False, sr=48000)
+data, fs = lib.load("crystalized_.5.wav", mono=False, sr=48000)
 #print(f"data:{data.dtype}")
 #data = data.astype(np.float64)
 #print(f"data2:{data.dtype}")
@@ -18,6 +19,7 @@ buffer_size = 48000
 ex_buffer = np.zeros((2,buffer_size))
 for_filter_array = np.zeros((2,buffer_size * 2))
 
+#出力配列(これにフィルタ後のデータをたしてく)
 total1 = np.zeros((2,buffer_size))
 total2 = np.zeros((2,buffer_size))
 total3 = np.zeros((2,buffer_size))
@@ -80,8 +82,8 @@ def callback(frame_count,fc):
     else:
         for i in range(int(ex_buffer.shape[1])):
             for_filter_array[:,i] *= (i + 1)/buffer_size
-
     
+    #ex_bufferに今回のデータを記憶
     ex_buffer = output_data
     #print(for_filter_array.shape)
 
@@ -91,9 +93,12 @@ def callback(frame_count,fc):
     filtered_data2 = np.zeros(for_filter_array.shape)
     filtered_data3 = np.zeros(for_filter_array.shape)
 
+    #再生用データ(無音)
     zero = np.zeros(2*frame_count,dtype=np.float32).tobytes('C')
 
+    #フィルタリング(データが存在する場合)
     if for_filter_array.shape[1] != 0:
+        #フィルタリング
         filtered_data1[0] = filter1(fc,for_filter_array[0])
         filtered_data1[1] = filter1(fc,for_filter_array[1])
         filtered_data2[0] = filter2(fc,for_filter_array[0])
@@ -131,12 +136,26 @@ def callback(frame_count,fc):
         """
 
         #出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく)
+        """
         total1 = np.append(total1,np.zeros(output_data.shape), axis=1)
         total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data1
         total2 = np.append(total2,np.zeros(output_data.shape), axis=1)
         total2[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data2
         total3 = np.append(total3,np.zeros(output_data.shape), axis=1)
         total3[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data3
+        """
+        if first_callback:
+            total1[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data1[:,buffer_size:]
+            total2[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data2[:,buffer_size:]
+            total3[:,start_pos:(start_pos + int(for_filter_array.shape[1]))] += filtered_data3[:,buffer_size:]
+            first_callback = False
+        else:
+            total1 = np.append(total1,np.zeros(output_data.shape), axis=1)
+            total1[:,start_pos - buffer_size:(start_pos + int(for_filter_array.shape[1]))] += filtered_data1
+            total2 = np.append(total2,np.zeros(output_data.shape), axis=1)
+            total2[:,start_pos - buffer_size:(start_pos + int(for_filter_array.shape[1]))] += filtered_data2
+            total3 = np.append(total3,np.zeros(output_data.shape), axis=1)
+            total3[:,start_pos - buffer_size:(start_pos + int(for_filter_array.shape[1]))] += filtered_data3
         
         #sf.write("in_callback.wav",total1.T,fs,format="wav")
         #print(type(filtered_data))

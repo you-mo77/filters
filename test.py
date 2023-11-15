@@ -29,8 +29,12 @@ output_data = signal.filtfilt(b, a, data)
 
 sf.write(f"output_order={order}.wav",output_data.T,fs)
 """
-
+"""
 a = np.array([0,1,2,3,4])
 print(f"a:{a}")
-b = a[1:5]
+b = a[1:]
 print(f"b:{b}")
+"""
+
+data, fs = lib.load("crystalized_.5.wav", sr = 48000, mono = False)
+print(data.shape)

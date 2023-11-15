@@ -3,6 +3,7 @@ import numpy as np
 import soundfile as sf
 from scipy import signal
 
+"""
 #a = np.arange(6).reshape(2,3)
 #print(a)
 #[[0 1 2]
@@ -27,3 +28,9 @@ b, a = signal.butter(order, low, "low")
 output_data = signal.filtfilt(b, a, data)
 
 sf.write(f"output_order={order}.wav",output_data.T,fs)
+"""
+
+a = np.array([0,1,2,3,4])
+print(f"a:{a}")
+b = a[1:5]
+print(f"b:{b}")

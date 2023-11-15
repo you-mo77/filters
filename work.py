@@ -5,13 +5,15 @@ import pyaudio as pa
 import time 
 from scipy import signal
 
+num = 6
+
 #音声取得
-data, fs = lib.load("crystalized_2.wav",mono=False, sr=48000)
+data, fs = lib.load(f"crystalized_{num}.wav",mono=False, sr=48000)
 #print(f"data:{data.dtype}")
 #data = data.astype(np.float64)
 #print(f"data2:{data.dtype}")
 
-flag = 0
+first_callback = True
 buffer_size = 48000
 ex_buffer = np.zeros((2,buffer_size))
 for_filter_array = np.zeros((2,buffer_size * 2))
@@ -41,27 +43,45 @@ def callback(frame_count,fc):
     global total1,total2,total3
     global start_pos, data, fs
     global ex_buffer
+    global first_callback
     
     # 切り出す(ステレオ->2行frame_count列　)
     output_data = data[:, start_pos:(start_pos + frame_count)]
     print(output_data)
+    print(f"output_data'size:{int(output_data.shape[1])}")
+    print(f"frame_count:{frame_count}")
+    print(f"ex_buffer'size{int(ex_buffer.shape[1])}")
 
     #フィルタリング用配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
     for_filter_array = np.hstack((ex_buffer,output_data))
+    """
     #print(int(for_filter_array.shape[1]//2))
-    if int(for_filter_array.shape[1]) <= buffer_size:
+    if first_callback:
         for i in range(int(for_filter_array.shape[1])):
             for_filter_array[:,i] *= ((i + 1)/buffer_size)
+        first_callback = False
     else:
+        if int(for_filter_array.shape[1]) <= buffer_size:
+            for i in range(int(for_filter_array.shape[1])):
+                for_filter_array[:,i] *= ((i + 1)/buffer_size)
+        else:
+            for i in range(buffer_size):
+                for_filter_array[:,i] *= ((i + 1)/buffer_size)
+            for i in range(int(for_filter_array.shape[1] - buffer_size)):
+                for_filter_array[:,int(for_filter_array.shape[1]) - 1 - i] *= ((i + 1)/buffer_size)
+    """
+    #print(int(for_filter_array.shape[1]//2))
+    if int(output_data.shape[1]) != 0:
         for i in range(buffer_size):
-            for_filter_array[:,i] *= ((i + 1)/buffer_size)
-        for i in range(int(for_filter_array.shape[1] - buffer_size)):
-            for_filter_array[:,int(for_filter_array.shape[1]) - 1 - i] *= ((i + 1)/buffer_size)
-    """
-    for i in range(int(for_filter_array.shape[1]//2)):
-        for_filter_array[:,i] *= ((i + 1)/buffer_size)
-        #for_filter_array[:,int(for_filter_array.shape[1]) - 1 - i] *= ((i + 1)/buffer_size)
-    """
+            for_filter_array[:,i] *= (i + 1)/buffer_size
+            #for_filter_array[:,int(for_filter_array.shape[1]) - 1 - i] *= ((i + 1)/buffer_size)
+        for i in range(int(output_data.shape[1])):
+            for_filter_array[:,buffer_size + i] *= (buffer_size - i)/buffer_size
+    else:
+        for i in range(int(ex_buffer.shape[1])):
+            for_filter_array[:,i] *= (i + 1)/buffer_size
+
+    
     ex_buffer = output_data
     #print(for_filter_array.shape)
 
@@ -133,7 +153,7 @@ def callback(frame_count,fc):
         #byte_data = filtered_data1.tobytes('C')
 
         #print("before ravel: ", output_data.shape)
-        #切り出し位置更新
+        #切り出し位置更新UnboundLocalError: cannot access local variable 'first_callback' where it is not associated with a value
         start_pos += frame_count
 
         #output_data = bytes([0xff for x in range(frame_count*2)] + [0 for x in range(frame_count*2)])
@@ -258,9 +278,9 @@ def main():
     
     print("terminated")
     #print(total1.shape)
-    sf.write("output1.new.wav",total1.T,fs,format="wav")
-    sf.write("output2.new.wav",total2.T,fs,format="wav")
-    sf.write("output3.new.wav",total3.T,fs,format="wav")
+    sf.write(f"{num}_output1.new.wav",total1.T,fs,format="wav")
+    sf.write(f"{num}_output2.new.wav",total2.T,fs,format="wav")
+    sf.write(f"{num}_output3.new.wav",total3.T,fs,format="wav")
 
 
     stream.close()

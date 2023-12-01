@@ -9,7 +9,7 @@ import threading as th
 num = 1
 
 #音声取得
-data, fs = lib.load(f"crystalized_{num}.wav",mono=False, sr=48000)
+data, fs = lib.load(f"crystalized.short.wav",mono=False, sr=48000)
 #data, fs = lib.load("crystalized_.5.wav", mono=False, sr=48000)
 
 #初期化
@@ -46,6 +46,10 @@ s1 = 0
 s2 = 0
 s3 = 0 
 
+# test
+p = pa.PyAudio()
+
+"""
 #再生関数(各々でストリームを開く)
 def play1():
     p1 = pa.PyAudio()
@@ -97,6 +101,7 @@ def play3():
     p3.terminate()
     
     return
+"""
 
 # 新コールバック関数(各々の中でフィルタしてそれを返す ただし、)
 def callback1(frame_count):
@@ -374,11 +379,13 @@ def callback(frame_count,fc):
         
 # 再生関数3つ
 def play1():
-    p1 = pa.PyAudio()
-    stream1 = p1.open(format=pa.paFloat32,
+    global p
+    #p1 = pa.PyAudio()
+    stream1 = p.open(format=pa.paFloat32,
                     channels=2,
                     rate=fs,
                     output=True,
+                    output_device_index=18,
                     stream_callback=lambda a1,b1,c1,d1:callback1(b1),
                     frames_per_buffer=buffer_size)
     
@@ -386,16 +393,18 @@ def play1():
         time.sleep(0.1)
 
     stream1.close()
-    p1.terminate()
+    #p1.terminate()
 
     return
 
 def play2():
-    p2 = pa.PyAudio()
-    stream2 = p2.open(format=pa.paFloat32,
+    global p
+    #p2 = pa.PyAudio()
+    stream2 = p.open(format=pa.paFloat32,
                     channels=2,
                     rate=fs,
                     output=True,
+                    output_device_index=19,
                     stream_callback=lambda a2,b2,c2,d2:callback2(b2),
                     frames_per_buffer=buffer_size)
     
@@ -403,16 +412,18 @@ def play2():
         time.sleep(0.1)
 
     stream2.close()
-    p2.terminate()
+    #nate()
 
     return
 
 def play3():
-    p3 = pa.PyAudio()
-    stream3 = p3.open(format=pa.paFloat32,
+    global p
+    #p3 = pa.PyAudio()
+    stream3 = p.open(format=pa.paFloat32,
                     channels=2,
                     rate=fs,
                     output=True,
+                    output_device_index=21,
                     stream_callback=lambda a3,b3,c3,d3:callback3(b3),
                     frames_per_buffer=buffer_size)
     
@@ -420,7 +431,7 @@ def play3():
         time.sleep(0.1)
 
     stream3.close()
-    p3.terminate()
+    #p3.terminate()
     
     return
 
@@ -475,7 +486,7 @@ def main():
         time.sleep(0.1)
     """
 
-    #ストリーム(非同期処理)
+    #ストリーム(非同期処理),
     t1 = th.Thread(target=play1)
     t2 = th.Thread(target=play2)
     t3 = th.Thread(target=play3)
@@ -485,6 +496,8 @@ def main():
     t1.join()
     t2.join()
     t3.join()
+
+    p.terminate()
     
     #音声ファイル出力(テスト用　実際はいらない)
     sf.write(f"{num}_output1.new.wav",total1.T,fs,format="wav")

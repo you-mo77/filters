@@ -5,14 +5,15 @@ import pyaudio as pa
 import time 
 from scipy import signal
 import threading as th
+import PySimpleGUI as sg
 
 num = 1
 
-#音声取得
+# 音声取得
 data, fs = lib.load(f"crystalized.short.wav",mono=False, sr=48000)
 #data, fs = lib.load("crystalized_.5.wav", mono=False, sr=48000)
 
-#初期化
+# 初期化
 first1 = True
 first2 = True
 first3 = True
@@ -30,24 +31,67 @@ play_data1 = np.zeros((2,buffer_size))
 play_data2 = np.zeros((2,buffer_size))
 play_data3 = np.zeros((2,buffer_size))
 
-#カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
+# カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
 fc = [0,700,7000,23999]
 
-#出力配列(これにフィルタ後のデータをたしてく)
+# 出力配列(これにフィルタ後のデータをたしてく)
 total1 = np.zeros((2,buffer_size))
 total2 = np.zeros((2,buffer_size))
 total3 = np.zeros((2,buffer_size))
 
-#スタート位置
+# スタート位置
 start_pos = 0
 
-#新スタート位置
+# 新スタート位置
 s1 = 0
 s2 = 0
 s3 = 0 
 
+# デバイスインデックス
+l_dev = 0
+m_dev = 0
+h_dev = 0
+
 # test
 p = pa.PyAudio()
+
+# gui表示用(l_index, m_index, h_indexを決めてもらう)
+def gui():
+    global l_dev,m_dev,h_dev
+
+    # レイアウト
+    layout = [[sg.Text("[名前 => atom mini] かつ [チャンネル数 => 2] を割り当ててください")],
+              [sg.Text("低域デバイス"),sg.Input(key="l_dev",default_text="0")],
+              [sg.Text("中域デバイス"),sg.Input(key="m_dev",default_text="0")],
+              [sg.Text("高域デバイス"),sg.Input(key="h_dev",default_text="0")],
+              [sg.Button("決定")]]
+    window = sg.Window('デバイス割り当て',layout)
+
+    # イベントループ(デバイス指定のみ 表示し続けたほうがいい？)
+    while True:
+        # event, values読み取り
+        event, values = window.read()
+
+        # デバイス決定
+        if event == "決定":
+            l_dev = int(values["l_dev"])
+            m_dev = int(values["m_dev"])
+            h_dev = int(values["h_dev"])
+
+            break
+
+        # ウィンドウ閉じる
+        if event == sg.WINDOW_CLOSED:
+            break
+
+    return
+
+####test####
+gui()
+print(f"l:{l_dev} m:{m_dev} h:{h_dev}")
+print(f"type:{type(l_dev)}")
+exit()
+####****####
 
 """
 #再生関数(各々でストリームを開く)
@@ -385,7 +429,7 @@ def play1():
                     channels=2,
                     rate=fs,
                     output=True,
-                    output_device_index=18,
+                    output_device_index=20,
                     stream_callback=lambda a1,b1,c1,d1:callback1(b1),
                     frames_per_buffer=buffer_size)
     
@@ -404,7 +448,7 @@ def play2():
                     channels=2,
                     rate=fs,
                     output=True,
-                    output_device_index=19,
+                    output_device_index=21,
                     stream_callback=lambda a2,b2,c2,d2:callback2(b2),
                     frames_per_buffer=buffer_size)
     
@@ -423,7 +467,7 @@ def play3():
                     channels=2,
                     rate=fs,
                     output=True,
-                    output_device_index=21,
+                    output_device_index=23,
                     stream_callback=lambda a3,b3,c3,d3:callback3(b3),
                     frames_per_buffer=buffer_size)
     

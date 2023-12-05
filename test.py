@@ -5,7 +5,7 @@ from scipy.io import wavfile
 import threading as th
 import streamlit as st
 import io
-import sounddevice as sd
+#import sounddevice as sd
 import wave
 import pyaudio as pa
 import threading as th
@@ -85,7 +85,7 @@ def main():
 
     return 
 """
-
+"""
 data1, fs1 = lib.load("crystalized_1.wav", sr=48000, mono=False)
 data2, fs2 = lib.load("crystalized_3.wav", sr=48000, mono=False)
 data3, fs3 = lib.load("crystalized_6.wav", sr=48000, mono=False)
@@ -95,6 +95,8 @@ s2 = 0
 s3 = 0
 
 buffer_size = 8192
+
+"""
 def main():
     """
     p1 = pa.PyAudio()
@@ -119,6 +121,8 @@ def main():
                     stream_callback=lambda a3,b3,c3,d3:callback3(b3),
                     frames_per_buffer=buffer_size)
     """
+
+    """
     t1 = th.Thread(target=play1)
     t2 = th.Thread(target=play2)
     t3 = th.Thread(target=play3)
@@ -128,7 +132,9 @@ def main():
     t1.join()
     t2.join()
     t3.join()
-    
+    """
+
+""" 
 def play1():
     p1 = pa.PyAudio()
     stream1 = p1.open(format=pa.paFloat32,
@@ -215,6 +221,19 @@ if __name__ == '__main__':
 
 
 #bytedata = data.tobytes("C")
+"""
+"""
+a = np.zeros(0)
+a = np.append(a,"ok?")
+a = np.append(a, "いいね！")
+print(a)
+"""
 
+a = [1,2,3]
+b = [4,5,6]
+c = [7,8,9]
 
-
+abc1 = [a,b,c]
+abc2 = [[col1, col2, col3] for col1, col2, col3 in zip(a,b,c)]
+print(abc1)
+print(abc2)

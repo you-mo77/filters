@@ -52,28 +52,62 @@ l_dev = 0
 m_dev = 0
 h_dev = 0
 
+# デバイス取得(hostapi's index == 2(WASAPI))
+dev_index = []
+dev_name = []
+dev_channel = []
+
 # test
 p = pa.PyAudio()
+
+# デバイス取得 → dev_index, dev_name　順番にappned
+def get_list():
+    global dev_index, dev_name, dev_channel
+
+    # 出力デバイス分ループ
+    for i in range(p.get_device_count()):
+
+        # デバイス情報取得
+        info = p.get_device_info_by_index(i)
+        
+        # wasapiの情報のみを取得 他のAPIインデックスは「p.get_host_api_info_by_index(i)」で取得可能 デバッグ用に別の条件式もつけている
+        #if info["hostApi"] == "2" and info["maxOutputChannels"] != "0":
+        if int(info["index"]) < 5:
+            dev_index.append(info["index"])
+            dev_name.append(info["name"])
+            dev_channel.append(info["maxOutputChannels"])
+
+    # デバイスリスト制作
+    dev_list = [[c1, c2, c3] for c1, c2, c3 in zip(dev_index, dev_name, dev_channel)]
+
+    return dev_list
 
 # gui表示用(l_index, m_index, h_indexを決めてもらう)
 def gui():
     global l_dev,m_dev,h_dev
 
+    # デバイスリスト取得
+    dev_list = get_list()
+    header = ["デバイス番号", "デバイス名", "出力チャンネル数"]
+    widths = [10,20,13]
+
     # レイアウト
-    layout = [[sg.Text("[名前 => atom mini] かつ [チャンネル数 => 2] を割り当ててください")],
-              [sg.Text("低域デバイス"),sg.Input(key="l_dev",default_text="0")],
-              [sg.Text("中域デバイス"),sg.Input(key="m_dev",default_text="0")],
-              [sg.Text("高域デバイス"),sg.Input(key="h_dev",default_text="0")],
-              [sg.Button("決定")]]
+    layout = [[sg.Text("(デバイス名 : atom mini) かつ (出力チャンネル数 : 2) のデバイス番号を割り当ててください",font=("Arial",20))],
+              [sg.Text("低域デバイス",font=("Arial",15)),sg.Input(key="l_dev",default_text="0",font=("Arial",15))],
+              [sg.Text("中域デバイス",font=("Arial",15)),sg.Input(key="m_dev",default_text="0",font=("Arial",15))],
+              [sg.Text("高域デバイス",font=("Arial",15)),sg.Input(key="h_dev",default_text="0",font=("Arial",15))],
+              [sg.Table(values=dev_list, headings=header, col_widths=widths, auto_size_columns=False,font=("Arial",15))],
+              [sg.Button("決定",font=("Arial",15))]]
     window = sg.Window('デバイス割り当て',layout)
 
     # イベントループ(デバイス指定のみ 表示し続けたほうがいい？)
     while True:
-        # event, values読み取り
+        # イベント待ち
         event, values = window.read()
 
         # デバイス決定
         if event == "決定":
+            # デバイス代入
             l_dev = int(values["l_dev"])
             m_dev = int(values["m_dev"])
             h_dev = int(values["h_dev"])
@@ -86,12 +120,16 @@ def gui():
 
     return
 
+
 ####test####
 gui()
-print(f"l:{l_dev} m:{m_dev} h:{h_dev}")
-print(f"type:{type(l_dev)}")
+
+print(dev_index)
+print(dev_name)
+print(dev_channel)
 exit()
 ####****####
+
 
 """
 #再生関数(各々でストリームを開く)
@@ -154,7 +192,7 @@ def callback1(frame_count):
     # 切り出し
     output = data[:,s1:s1+frame_count]
 
-    #フィルタリングデータ代入配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
+    # フィルタリングデータ代入配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
     for_filter_array1 = np.hstack((ex_buffer1,output))
     if int(output.shape[1]) != 0:
         for i in range(buffer_size):
@@ -166,26 +204,26 @@ def callback1(frame_count):
         for i in range(int(ex_buffer1.shape[1])):
             for_filter_array1[:,i] *= (i + 1)/buffer_size
     
-    #ex_bufferに今回のデータを記憶
+    # ex_bufferに今回のデータを記憶
     ex_buffer1 = output
 
-    #フィルタリング
+    # フィルタリング
     filtered_data1 = np.zeros(for_filter_array1.shape)
 
-    #フィルタリング(データが存在する場合)
+    # フィルタリング(データが存在する場合)
     if for_filter_array1.shape[1] != 0:
         #フィルタリング
         filtered_data1[0] = filter1(fc,for_filter_array1[0])
         filtered_data1[1] = filter1(fc,for_filter_array1[1])
 
-        #dtype修正
+        # dtype修正
         #print(f"filtered_data1:{filtered_data.dtype}")
         filtered_data1 = filtered_data1.astype(np.float32)
 
-        #正規化チックなもの(クリッピング対策)もとの音声よりかなりボリュームが減っているため、出力側で問題がなければ消すべき
+        # 正規化チックなもの(クリッピング対策)もとの音声よりかなりボリュームが減っているため、出力側で問題がなければ消すべき
         filtered_data1 /= 2
 
-        #出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく 最終的には消していい デバッグ用)
+        # 出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく 最終的には消していい デバッグ用)
         if first1:
             total1[:,s1:(s1 + int(for_filter_array1.shape[1]))] += filtered_data1[:,buffer_size:]
             first1 = False
@@ -203,10 +241,10 @@ def callback1(frame_count):
         # byte形式に変換
         byte_data = play_data1.tobytes("C")
 
-        #切り出し位置更新
+        # 切り出し位置更新
         s1 += frame_count
 
-        #callback終了
+        # callback終了
         return (byte_data, pa.paContinue)
     else:
         return (b'',pa.paContinue)  
@@ -217,7 +255,7 @@ def callback2(frame_count):
     # 切り出し
     output = data[:,s2:s2+frame_count]
 
-    #フィルタリングデータ代入配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
+    # フィルタリングデータ代入配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
     for_filter_array2 = np.hstack((ex_buffer2,output))
     if int(output.shape[1]) != 0:
         for i in range(buffer_size):
@@ -229,26 +267,26 @@ def callback2(frame_count):
         for i in range(int(ex_buffer2.shape[1])):
             for_filter_array2[:,i] *= (i + 1)/buffer_size
     
-    #ex_bufferに今回のデータを記憶
+    # ex_bufferに今回のデータを記憶
     ex_buffer2 = output
 
-    #フィルタリング
+    # フィルタリング
     filtered_data2 = np.zeros(for_filter_array2.shape)
 
-    #フィルタリング(データが存在する場合)
+    # フィルタリング(データが存在する場合)
     if for_filter_array2.shape[1] != 0:
-        #フィルタリング
+        # フィルタリング
         filtered_data2[0] = filter2(fc,for_filter_array2[0])
         filtered_data2[1] = filter2(fc,for_filter_array2[1])
 
-        #dtype修正
+        # dtype修正
         #print(f"filtered_data1:{filtered_data.dtype}")
         filtered_data2 = filtered_data2.astype(np.float32)
 
-        #正規化チックなもの(クリッピング対策)もとの音声よりかなりボリュームが減っているため、出力側で問題がなければ消すべき
+        # 正規化チックなもの(クリッピング対策)もとの音声よりかなりボリュームが減っているため、出力側で問題がなければ消すべき
         filtered_data2 /= 2
 
-        #出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく 最終的には消していい デバッグ用)
+        # 出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく 最終的には消していい デバッグ用)
         if first2:
             total2[:,s2:(s2 + int(for_filter_array2.shape[1]))] += filtered_data2[:,buffer_size:]
             first2 = False
@@ -266,10 +304,10 @@ def callback2(frame_count):
         # byte形式に変換
         byte_data = play_data2.tobytes("C")
 
-        #切り出し位置更新
+        # 切り出し位置更新
         s2 += frame_count
 
-        #callback終了
+        # callback終了
         return (byte_data, pa.paContinue)
     else:
         return (b'',pa.paContinue)  
@@ -429,7 +467,7 @@ def play1():
                     channels=2,
                     rate=fs,
                     output=True,
-                    output_device_index=20,
+                    output_device_index=l_dev,
                     stream_callback=lambda a1,b1,c1,d1:callback1(b1),
                     frames_per_buffer=buffer_size)
     
@@ -448,7 +486,7 @@ def play2():
                     channels=2,
                     rate=fs,
                     output=True,
-                    output_device_index=21,
+                    output_device_index=m_dev,
                     stream_callback=lambda a2,b2,c2,d2:callback2(b2),
                     frames_per_buffer=buffer_size)
     
@@ -467,7 +505,7 @@ def play3():
                     channels=2,
                     rate=fs,
                     output=True,
-                    output_device_index=23,
+                    output_device_index=h_dev,
                     stream_callback=lambda a3,b3,c3,d3:callback3(b3),
                     frames_per_buffer=buffer_size)
     
@@ -516,19 +554,8 @@ def main():
     #pyaudioインスタンス
     p = pa.PyAudio()
 
-    #ストリーム
-    """
-    print(f"opening {data.shape[0]} channels")
-    stream = p.open(format=pa.paFloat32,
-                    channels=2,
-                    rate=fs,
-                    output=True,
-                    stream_callback=lambda a,b,c,d:callback(b,fc),
-                    frames_per_buffer=buffer_size)
-
-    while stream.is_active():
-        time.sleep(0.1)
-    """
+    # guiより
+    gui()
 
     #ストリーム(非同期処理),
     t1 = th.Thread(target=play1)

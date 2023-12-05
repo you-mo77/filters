@@ -89,16 +89,26 @@ def gui():
     # デバイスリスト取得
     dev_list = get_list()
     header = ["デバイス番号", "デバイス名", "出力チャンネル数"]
-    widths = [10,20,13]
+    widths = [10,30,13]
 
     # レイアウト
+    """
     layout = [[sg.Text("(デバイス名 : atom mini) かつ (出力チャンネル数 : 2) のデバイス番号を割り当ててください",font=("Arial",20))],
               [sg.Text("低域デバイス",font=("Arial",15)),sg.Input(key="l_dev",default_text="0",font=("Arial",15))],
               [sg.Text("中域デバイス",font=("Arial",15)),sg.Input(key="m_dev",default_text="0",font=("Arial",15))],
               [sg.Text("高域デバイス",font=("Arial",15)),sg.Input(key="h_dev",default_text="0",font=("Arial",15))],
               [sg.Table(values=dev_list, headings=header, col_widths=widths, auto_size_columns=False,font=("Arial",15))],
               [sg.Button("決定",font=("Arial",15))]]
-    window = sg.Window('デバイス割り当て',layout)
+    """
+    layout = [[sg.Text("(デバイス名 : atom mini) かつ (出力チャンネル数 : 2) のデバイス番号を割り当ててください", font=("Arial",20), text_color="black", background_color="white")],
+              [sg.Text("低域デバイス", font=("Arial",15), text_color="black", background_color="white"), sg.Combo(values=dev_index, key="l_dev", default_value="選択してください", size=(30,1), font=("Arial",15)), sg.Button("チェック", key="低域試聴"), sg.Text("", font=("Arial",15), text_color="red", background_color="white", key="error1")],
+              [sg.Text("中域デバイス", font=("Arial",15), text_color="black", background_color="white"), sg.Combo(values=dev_index, key="m_dev", default_value="選択してください", size=(30,1), font=("Arial",15)), sg.Button("チェック", key="中域試聴"), sg.Text("", font=("Arial",15), text_color="red", background_color="white", key="error2")],
+              [sg.Text("高域デバイス", font=("Arial",15), text_color="black", background_color="white"), sg.Combo(values=dev_index, key="h_dev", default_value="選択してください", size=(30,1), font=("Arial",15)), sg.Button("チェック", key="高域試聴"), sg.Text("", font=("Arial",15), text_color="red", background_color="white", key="error3")],
+              [sg.Table(values=dev_list, headings=header, col_widths=widths, auto_size_columns=False,font=("Arial",15), text_color="black", background_color="white")],
+              [sg.Button("決定",font=("Arial",15))]]
+    
+    # ウィンドウ作成
+    window = sg.Window('デバイス割り当て', layout, background_color="white")
 
     # イベントループ(デバイス指定のみ 表示し続けたほうがいい？)
     while True:
@@ -108,11 +118,25 @@ def gui():
         # デバイス決定
         if event == "決定":
             # デバイス代入
-            l_dev = int(values["l_dev"])
-            m_dev = int(values["m_dev"])
-            h_dev = int(values["h_dev"])
+            if values["l_dev"] in dev_index:
+                window["error1"].update("")
+                l_dev = int(values["l_dev"])
+            else:
+                window["error1"].update("正確に指定してください")
+            if values["m_dev"] in dev_index:
+                window["error2"].update("")
+                m_dev = int(values["m_dev"])
+            else:
+                window["error2"].update("正確に指定してください")
+            if values["h_dev"] in dev_index:
+                window["error3"].update("")
+                h_dev = int(values["h_dev"])
+            else:
+                window["error3"].update("正確に指定してください")
 
-            break
+            # デバイス設定終了
+            if values["l_dev"] in dev_index and values["m_dev"] in dev_index and values["h_dev"] in dev_index:
+                break
 
         # ウィンドウ閉じる
         if event == sg.WINDOW_CLOSED:
@@ -124,9 +148,9 @@ def gui():
 ####test####
 gui()
 
-print(dev_index)
-print(dev_name)
-print(dev_channel)
+print(f"l_dev:{l_dev}")
+print(f"m_dev:{m_dev}")
+print(f"h_dev:{h_dev}")
 exit()
 ####****####
 

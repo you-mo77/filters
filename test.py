@@ -37,6 +37,8 @@ print(f"b:{b}")
 """
 """
 data1, fs1 = lib.load("3_output1.new.wav", sr = 48000, mono = False)
+"""
+"""
 data2, fs2 = lib.load("3_output2.new.wav", sr = 48000, mono = False)
 data3, fs3 = lib.load("3_output3.new.wav", sr = 48000, mono = False)
 """
@@ -94,18 +96,34 @@ s1 = 0
 s2 = 0
 s3 = 0
 
+
+
 buffer_size = 8192
 
 """
+
+# 試聴用音声生成(sin波440[hz]) return wave
+def make_test_sound(freq):
+    length = 1
+    fs = 48000
+    t = np.arange(0, length, 1/fs)
+    wave = np.sin(2 * np.pi * freq * t)
+    wave = wave.astype(np.float32)
+    return wave
+
+data1 = make_test_sound(400)
+
 def main():
     """
     p1 = pa.PyAudio()
     stream1 = p1.open(format=pa.paFloat32,
                     channels=2,
-                    rate=fs1,
+                    rate=48000,
                     output=True,
                     stream_callback=lambda a1,b1,c1,d1:callback1(b1),
-                    frames_per_buffer=buffer_size)
+                    frames_per_buffer=48000)
+                    """
+    """
     p2 = pa.PyAudio()
     stream2 = p2.open(format=pa.paFloat32,
                     channels=2,
@@ -121,28 +139,29 @@ def main():
                     stream_callback=lambda a3,b3,c3,d3:callback3(b3),
                     frames_per_buffer=buffer_size)
     """
+    play1()
 
-    """
-    t1 = th.Thread(target=play1)
-    t2 = th.Thread(target=play2)
-    t3 = th.Thread(target=play3)
-    t1.start()
-    t2.start()
-    t3.start()
-    t1.join()
-    t2.join()
-    t3.join()
+    #t1 = th.Thread(target=play1)
+    #t2 = th.Thread(target=play2)
+    #t3 = th.Thread(target=play3)
+    #t1.start()
+    #t2.start()
+    #t3.start()
+    #t1.join()
+    #t2.join()
+    #t3.join()
     """
 
 """ 
+
 def play1():
     p1 = pa.PyAudio()
     stream1 = p1.open(format=pa.paFloat32,
                     channels=2,
-                    rate=fs1,
+                    rate=48000,
                     output=True,
                     stream_callback=lambda a1,b1,c1,d1:callback1(b1),
-                    frames_per_buffer=buffer_size)
+                    frames_per_buffer=48000)
     
     while stream1.is_active():
         time.sleep(0.1)
@@ -152,7 +171,7 @@ def play1():
 
     return
 
-
+"""
 def play2():
     p2 = pa.PyAudio()
     stream2 = p2.open(format=pa.paFloat32,
@@ -185,7 +204,7 @@ def play3():
     p3.terminate()
     
     return
-
+"""
 def callback1(frame_count):
     global s1
     output = data1[:,s1:s1+frame_count]
@@ -196,6 +215,7 @@ def callback1(frame_count):
     print(f"1:{s1}")
     return(byte_data,pa.paContinue)
 
+"""
 def callback2(frame_count):
     global s2
     output = data2[:,s2:s2+frame_count]
@@ -215,7 +235,7 @@ def callback3(frame_count):
     byte_data = output.tobytes("C")
     print(f"3:{s3}")
     return(byte_data,pa.paContinue)
-
+"""
 if __name__ == '__main__':
     main()
 
@@ -223,12 +243,9 @@ if __name__ == '__main__':
 #bytedata = data.tobytes("C")
 """
 """
-a = np.zeros(0)
-a = np.append(a,"ok?")
-a = np.append(a, "いいね！")
-print(a)
 """
-
+"""
+"""
 a = [1,2,3]
 b = [4,5,6]
 c = [7,8,9]
@@ -237,3 +254,5 @@ abc1 = [a,b,c]
 abc2 = [[col1, col2, col3] for col1, col2, col3 in zip(a,b,c)]
 print(abc1)
 print(abc2)
+"""
+

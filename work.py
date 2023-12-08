@@ -71,7 +71,7 @@ def get_list():
         info = p.get_device_info_by_index(i)
         
         # wasapiの情報のみを取得 他のAPIインデックスは「p.get_host_api_info_by_index(i)」で取得可能 デバッグ用に別の条件式もつけている
-        #if info["hostApi"] == "2" and info["maxOutputChannels"] != "0":
+        #if info["hostApi"] == "2" and info["maxOutputChannels"] == "2":
         if int(info["index"]) < 5:
             dev_index.append(info["index"])
             dev_name.append(info["name"])
@@ -84,7 +84,7 @@ def get_list():
 
 # gui表示用(l_index, m_index, h_indexを決めてもらう)
 def gui():
-    global l_dev,m_dev,h_dev
+    global l_dev,m_dev,h_dev,p
 
     # デバイスリスト取得
     dev_list = get_list()
@@ -92,15 +92,7 @@ def gui():
     widths = [10,30,13]
 
     # レイアウト
-    """
-    layout = [[sg.Text("(デバイス名 : atom mini) かつ (出力チャンネル数 : 2) のデバイス番号を割り当ててください",font=("Arial",20))],
-              [sg.Text("低域デバイス",font=("Arial",15)),sg.Input(key="l_dev",default_text="0",font=("Arial",15))],
-              [sg.Text("中域デバイス",font=("Arial",15)),sg.Input(key="m_dev",default_text="0",font=("Arial",15))],
-              [sg.Text("高域デバイス",font=("Arial",15)),sg.Input(key="h_dev",default_text="0",font=("Arial",15))],
-              [sg.Table(values=dev_list, headings=header, col_widths=widths, auto_size_columns=False,font=("Arial",15))],
-              [sg.Button("決定",font=("Arial",15))]]
-    """
-    layout = [[sg.Text("(デバイス名 : atom mini) かつ (出力チャンネル数 : 2) のデバイス番号を割り当ててください", font=("Arial",20), text_color="black", background_color="white")],
+    layout = [[sg.Text("[デバイス名 : atom mini] のデバイス番号を割り当ててください", font=("Arial",20), text_color="black", background_color="white")],
               [sg.Text("低域デバイス", font=("Arial",15), text_color="black", background_color="white"), sg.Combo(values=dev_index, key="l_dev", default_value="選択してください", size=(30,1), font=("Arial",15)), sg.Button("チェック", key="低域試聴"), sg.Text("", font=("Arial",15), text_color="red", background_color="white", key="error1")],
               [sg.Text("中域デバイス", font=("Arial",15), text_color="black", background_color="white"), sg.Combo(values=dev_index, key="m_dev", default_value="選択してください", size=(30,1), font=("Arial",15)), sg.Button("チェック", key="中域試聴"), sg.Text("", font=("Arial",15), text_color="red", background_color="white", key="error2")],
               [sg.Text("高域デバイス", font=("Arial",15), text_color="black", background_color="white"), sg.Combo(values=dev_index, key="h_dev", default_value="選択してください", size=(30,1), font=("Arial",15)), sg.Button("チェック", key="高域試聴"), sg.Text("", font=("Arial",15), text_color="red", background_color="white", key="error3")],
@@ -138,20 +130,56 @@ def gui():
             if values["l_dev"] in dev_index and values["m_dev"] in dev_index and values["h_dev"] in dev_index:
                 break
 
+        # 試聴用
+        if event == "低域試聴":
+            window["低域試聴"].update("試聴中")
+            low_test(int(values["l_dev"]))
+            window["低域試聴"].update("チェック")
+
         # ウィンドウ閉じる
         if event == sg.WINDOW_CLOSED:
             break
 
     return
 
+# 試聴用コールバック
+def test_callback1(frame_count):
+    wave = make_test_sound(440)
+    return (wave, pa.paContinue)
+
+# 試聴
+def low_test(dev_index):
+    global p
+
+    print(dev_index)
+    test_stream = p.open(format=pa.paFloat32,
+                    channels=2,
+                    rate=48000,
+                    output_device_index=dev_index,
+                    output=True,
+                    stream_callback=lambda a1,b1,c1,d1:test_callback1(b1),
+                    frames_per_buffer=48000)
+    while test_stream.is_active():
+        time.sleep(0.1)
+
+    test_stream.close()
+
+    return
+
+# 試聴用音声生成(sin波440[hz]) return wave
+def make_test_sound(freq):
+    length = 1
+    fs = 48000
+    t = np.arange(0, length, 1/fs)
+    wave = np.sin(2 * np.pi * freq * t)
+    wave = wave.astype(np.float32)
+    return wave
 
 ####test####
 gui()
-
 print(f"l_dev:{l_dev}")
 print(f"m_dev:{m_dev}")
 print(f"h_dev:{h_dev}")
-exit()
 ####****####
 
 
@@ -209,7 +237,7 @@ def play3():
     return
 """
 
-# 新コールバック関数(各々の中でフィルタしてそれを返す ただし、)
+# 新コールバック関数(各々の中でフィルタしてそれを返す )
 def callback1(frame_count):
     global s1,for_filter_array1,ex_buffer1,first1,total1,play_data1
 
@@ -396,7 +424,7 @@ def callback3(frame_count):
         #callback終了
         return (byte_data, pa.paContinue)
     else:
-        return (b'',pa.paContinue)   
+        return (b'',pa.paContinue)  
 
 """
 #コールバック関数
@@ -540,6 +568,8 @@ def play3():
     #p3.terminate()
     
     return
+
+exit()
 
 #新フィルタ関数
 def filter1(fc, data:np.ndarray):

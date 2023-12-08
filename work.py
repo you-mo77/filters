@@ -70,7 +70,7 @@ def get_list():
         # デバイス情報取得
         info = p.get_device_info_by_index(i)
         
-        # wasapiの情報のみを取得 他のAPIインデックスは「p.get_host_api_info_by_index(i)」で取得可能 デバッグ用に別の条件式もつけている
+        # wasapiの情報のみを取得 他のAPIインデックスは「p.get_host_api_info_by_index(i)」で取得可能 デバッグ用に別の条件式もつけている hostApiはダックをつけないと2にならない？
         #if info["hostApi"] == "2" and info["maxOutputChannels"] == "2":
         if int(info["index"]) < 5:
             dev_index.append(info["index"])
@@ -132,9 +132,11 @@ def gui():
 
         # 試聴用
         if event == "低域試聴":
-            window["低域試聴"].update("試聴中")
             low_test(int(values["l_dev"]))
-            window["低域試聴"].update("チェック")
+        if event == "中域試聴":
+            middle_test(int(values["m_dev"]))
+        if event == "高域試聴":
+            high_test(int(values["h_dev"]))
 
         # ウィンドウ閉じる
         if event == sg.WINDOW_CLOSED:
@@ -146,6 +148,13 @@ def gui():
 def test_callback1(frame_count):
     wave = make_test_sound(440)
     return (wave, pa.paContinue)
+def test_callback2(frame_count):
+    wave = make_test_sound(700)
+    return (wave, pa.paContinue)
+def test_callback3(frame_count):
+    wave = make_test_sound(7000)
+    return (wave, pa.paContinue)
+
 
 # 試聴
 def low_test(dev_index):
@@ -165,6 +174,41 @@ def low_test(dev_index):
     test_stream.close()
 
     return
+def middle_test(dev_index):
+    global p
+
+    print(dev_index)
+    test_stream = p.open(format=pa.paFloat32,
+                    channels=2,
+                    rate=48000,
+                    output_device_index=dev_index,
+                    output=True,
+                    stream_callback=lambda a1,b1,c1,d1:test_callback2(b1),
+                    frames_per_buffer=48000)
+    while test_stream.is_active():
+        time.sleep(0.1)
+
+    test_stream.close()
+
+    return
+def high_test(dev_index):
+    global p
+
+    print(dev_index)
+    test_stream = p.open(format=pa.paFloat32,
+                    channels=2,
+                    rate=48000,
+                    output_device_index=dev_index,
+                    output=True,
+                    stream_callback=lambda a1,b1,c1,d1:test_callback3(b1),
+                    frames_per_buffer=48000)
+    while test_stream.is_active():
+        time.sleep(0.1)
+
+    test_stream.close()
+
+    return
+
 
 # 試聴用音声生成(sin波440[hz]) return wave
 def make_test_sound(freq):

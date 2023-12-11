@@ -9,6 +9,15 @@ import PySimpleGUI as sg
 
 num = 1
 
+# 試聴用音声生成(sin波440[hz]) return wave
+def make_test_sound(freq):
+    length = 1
+    fs = 48000
+    t = np.arange(0, length, 1/fs)
+    wave = np.sin(2 * np.pi * freq * t)
+    wave = wave.astype(np.float32)
+    return wave
+
 # 音声取得
 data, fs = lib.load(f"crystalized.short.wav",mono=False, sr=48000)
 #data, fs = lib.load("crystalized_.5.wav", mono=False, sr=48000)
@@ -30,6 +39,9 @@ for_filter_array3 = np.zeros((2,buffer_size * 2))
 play_data1 = np.zeros((2,buffer_size))
 play_data2 = np.zeros((2,buffer_size))
 play_data3 = np.zeros((2,buffer_size))
+wave1 = make_test_sound(440)
+wave2 = make_test_sound(880)
+wave3 = make_test_sound(7000)
 
 # カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
 fc = [0,700,7000,23999]
@@ -71,8 +83,8 @@ def get_list():
         info = p.get_device_info_by_index(i)
         
         # wasapiの情報のみを取得 他のAPIインデックスは「p.get_host_api_info_by_index(i)」で取得可能 デバッグ用に別の条件式もつけている hostApiはダックをつけないと2にならない？
-        #if info["hostApi"] == "2" and info["maxOutputChannels"] == "2":
-        if int(info["index"]) < 5:
+        if int(info["hostApi"]) == 2 and int(info["maxOutputChannels"]) == 2:
+        #if int(info["index"]) < 5:
             dev_index.append(info["index"])
             dev_name.append(info["name"])
             dev_channel.append(info["maxOutputChannels"])
@@ -129,7 +141,7 @@ def gui():
             # デバイス設定終了
             if values["l_dev"] in dev_index and values["m_dev"] in dev_index and values["h_dev"] in dev_index:
                 break
-
+        """
         # 試聴用
         if event == "低域試聴":
             low_test(int(values["l_dev"]))
@@ -137,16 +149,19 @@ def gui():
             middle_test(int(values["m_dev"]))
         if event == "高域試聴":
             high_test(int(values["h_dev"]))
-
+        """
+            
         # ウィンドウ閉じる
         if event == sg.WINDOW_CLOSED:
             break
-
+        
     return
 
 # 試聴用コールバック
 def test_callback1(frame_count):
     wave = make_test_sound(440)
+    wave = np.repeat(wave,2)
+    wave = wave.tobytes("C")
     return (wave, pa.paContinue)
 def test_callback2(frame_count):
     wave = make_test_sound(700)
@@ -183,6 +198,7 @@ def middle_test(dev_index):
                     rate=48000,
                     output_device_index=dev_index,
                     output=True,
+                    
                     stream_callback=lambda a1,b1,c1,d1:test_callback2(b1),
                     frames_per_buffer=48000)
     while test_stream.is_active():
@@ -210,20 +226,14 @@ def high_test(dev_index):
     return
 
 
-# 試聴用音声生成(sin波440[hz]) return wave
-def make_test_sound(freq):
-    length = 1
-    fs = 48000
-    t = np.arange(0, length, 1/fs)
-    wave = np.sin(2 * np.pi * freq * t)
-    wave = wave.astype(np.float32)
-    return wave
+
 
 ####test####
 gui()
 print(f"l_dev:{l_dev}")
 print(f"m_dev:{m_dev}")
 print(f"h_dev:{h_dev}")
+exit()
 ####****####
 
 
@@ -613,7 +623,6 @@ def play3():
     
     return
 
-exit()
 
 #新フィルタ関数
 def filter1(fc, data:np.ndarray):

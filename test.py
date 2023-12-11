@@ -10,249 +10,33 @@ import wave
 import pyaudio as pa
 import threading as th
 import time
+from pydub import AudioSegment as AS 
 
-"""
-#a = np.arange(6).reshape(2,3)
-#print(a)
-#[[0 1 2]
-# [3 4 5]]
+def to_wav(path:str):
 
+    if path.lower().endswith(".wav"):
+        print("this is wav")
+        data, fs = lib.load(path)
 
-#フィルタ定義
-order = 7
-fn = fs * 0.5
-low = fc / fn
-b, a = signal.butter(order, low, "low")
+    elif path.lower().endswith(".mp3"):
+        print("this is mp3")
+        data = AS.from_mp3(path)
+        fs = 48000
 
-#フィルタかける
-output_data = signal.filtfilt(b, a, data)
+    elif path.lower().endswith(".flac"):
+        print("this is flac")
+    elif path.lower().endswith(".mov") or path.lower().endswith(".m4a") or path.lower().endswith(".alac"):
+        print("this is alac(.mov or .m4a or .alac)")
+    else:
+        print("このフォーマットは対応していません")
 
-sf.write(f"output_order={order}.wav",output_data.T,fs)
-"""
-"""
-a = np.array([0,1,2,3,4])
-print(f"a:{a}")
-b = a[1:]
-print(f"b:{b}")
-"""
-"""
-data1, fs1 = lib.load("3_output1.new.wav", sr = 48000, mono = False)
-"""
-"""
-data2, fs2 = lib.load("3_output2.new.wav", sr = 48000, mono = False)
-data3, fs3 = lib.load("3_output3.new.wav", sr = 48000, mono = False)
-"""
-"""
-text1 = "this is the text1"
-text2 = "this is the text2"
-text3 = "this is the text3"
-
-a = np.array([0,1,2,3])
-
-def delay(c_num:int):
-    num = 0
-    for i in range(0,1000000000):
-        num = i % 1000000
-        if num == 0:
-            print(f"Here is t{c_num}")
-
-    return
-
-def task(c_num,a:np.ndarray):
-    if c_num == 1:
-        print(f"num1:{a}")
-    elif c_num == 2:
-        print(f"num2:{a}")
-    elif c_num == 3:
-        print(f"num3:{a}")
-    return 
-
-t1 = th.Thread(target=task, args=(1,a,))
-t2 = th.Thread(target=task, args=(2,a,))
-t3 = th.Thread(target=task, args=(3,a,))
-
-def main():
-    #マルチスレッド
-    a = np.array([0,1,2,3])data, fs = lib.load("1_output1.new.wav",sr = 48000, mono = False)
-
-    t1.start()
-    t2.start()
-    t3.start()
-
-    t1.join()
-    t2.join()
-    t3.join()
-
-    print("finish")
-
-    return 
-"""
-"""
-data1, fs1 = lib.load("crystalized_1.wav", sr=48000, mono=False)
-data2, fs2 = lib.load("crystalized_3.wav", sr=48000, mono=False)
-data3, fs3 = lib.load("crystalized_6.wav", sr=48000, mono=False)
-
-s1 = 0
-s2 = 0
-s3 = 0
+    return data, fs
 
 
+path1 = "crystalized.wav"
+path2 = "crystalized.mp3"
 
-buffer_size = 8192
-
-"""
-
-# 試聴用音声生成(sin波440[hz]) return wave
-def make_test_sound(freq):
-    length = 1
-    fs = 48000
-    t = np.arange(0, length, 1/fs)
-    wave = np.sin(2 * np.pi * freq * t)
-    wave = wave.astype(np.float32)
-    return wave
-
-data1 = make_test_sound(400)
-
-def main():
-    """
-    p1 = pa.PyAudio()
-    stream1 = p1.open(format=pa.paFloat32,
-                    channels=2,
-                    rate=48000,
-                    output=True,
-                    stream_callback=lambda a1,b1,c1,d1:callback1(b1),
-                    frames_per_buffer=48000)
-                    """
-    """
-    p2 = pa.PyAudio()
-    stream2 = p2.open(format=pa.paFloat32,
-                    channels=2,
-                    rate=fs2,
-                    output=True,
-                    stream_callback=lambda a2,b2,c2,d2:callback2(b2),
-                    frames_per_buffer=buffer_size)
-    p3 = pa.PyAudio()
-    stream3 = p3.open(format=pa.paFloat32,
-                    channels=2,
-                    rate=fs3,
-                    output=True,
-                    stream_callback=lambda a3,b3,c3,d3:callback3(b3),
-                    frames_per_buffer=buffer_size)
-    """
-    play1()
-
-    #t1 = th.Thread(target=play1)
-    #t2 = th.Thread(target=play2)
-    #t3 = th.Thread(target=play3)
-    #t1.start()
-    #t2.start()
-    #t3.start()
-    #t1.join()
-    #t2.join()
-    #t3.join()
-    """
-
-""" 
-
-def play1():
-    p1 = pa.PyAudio()
-    stream1 = p1.open(format=pa.paFloat32,
-                    channels=2,
-                    rate=48000,
-                    output=True,
-                    stream_callback=lambda a1,b1,c1,d1:callback1(b1),
-                    frames_per_buffer=48000)
-    
-    while stream1.is_active():
-        time.sleep(0.1)
-
-    stream1.close()
-    p1.terminate()
-
-    return
-
-"""
-def play2():
-    p2 = pa.PyAudio()
-    stream2 = p2.open(format=pa.paFloat32,
-                    channels=2,
-                    rate=fs2,
-                    output=True,
-                    stream_callback=lambda a2,b2,c2,d2:callback2(b2),
-                    frames_per_buffer=buffer_size)
-    
-    while stream2.is_active():
-        time.sleep(0.1)
-
-    stream2.close()
-    p2.terminate()
-
-    return
-def play3():
-    p3 = pa.PyAudio()
-    stream3 = p3.open(format=pa.paFloat32,
-                    channels=2,
-                    rate=fs3,
-                    output=True,
-                    stream_callback=lambda a3,b3,c3,d3:callback3(b3),
-                    frames_per_buffer=buffer_size)
-    
-    while stream3.is_active():
-        time.sleep(0.1)
-
-    stream3.close()
-    p3.terminate()
-    
-    return
-"""
-def callback1(frame_count):
-    global s1
-    output = data1[:,s1:s1+frame_count]
-    s1 += frame_count
-    output = output.T
-    output = np.ravel(output).astype(np.float32)
-    byte_data = output.tobytes("C")
-    print(f"1:{s1}")
-    return(byte_data,pa.paContinue)
-
-"""
-def callback2(frame_count):
-    global s2
-    output = data2[:,s2:s2+frame_count]
-    s2 += frame_count
-    output = output.T
-    output = np.ravel(output).astype(np.float32)
-    byte_data = output.tobytes("C")
-    print(f"2:{s2}")
-    return(byte_data,pa.paContinue)
-
-def callback3(frame_count):
-    global s3
-    output = data3[:,s3:s3+frame_count]
-    s3 += frame_count
-    output = output.T
-    output = np.ravel(output).astype(np.float32)
-    byte_data = output.tobytes("C")
-    print(f"3:{s3}")
-    return(byte_data,pa.paContinue)
-"""
-if __name__ == '__main__':
-    main()
-
-
-#bytedata = data.tobytes("C")
-"""
-"""
-"""
-"""
-"""
-a = [1,2,3]
-b = [4,5,6]
-c = [7,8,9]
-
-abc1 = [a,b,c]
-abc2 = [[col1, col2, col3] for col1, col2, col3 in zip(a,b,c)]
-print(abc1)
-print(abc2)
-"""
-
+data1, fs1 = to_wav(path1)
+print("ok1")
+data2, fs2 = to_wav(path2)
+print("ok2")

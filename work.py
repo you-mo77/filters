@@ -17,9 +17,12 @@ def make_test_sound(freq):
     wave = np.sin(2 * np.pi * freq * t)
     wave = wave.astype(np.float32)
     return wave
+ 
+# 音声ファイルパス
+path = "crystalized_1.wav"
 
 # 音声取得
-data, fs = lib.load(f"crystalized.short.wav",mono=False, sr=48000)
+data, fs = lib.load(path,mono=False, sr=48000)
 #data, fs = lib.load("crystalized_.5.wav", mono=False, sr=48000)
 
 # 初期化
@@ -140,6 +143,7 @@ def gui():
 
             # デバイス設定終了
             if values["l_dev"] in dev_index and values["m_dev"] in dev_index and values["h_dev"] in dev_index:
+                window.close()
                 break
         """
         # 試聴用
@@ -154,6 +158,8 @@ def gui():
         # ウィンドウ閉じる
         if event == sg.WINDOW_CLOSED:
             break
+
+        # 
         
     return
 
@@ -225,15 +231,29 @@ def high_test(dev_index):
 
     return
 
+# フォーマット変更(-> .wav)
+def to_wav(path:str):
 
+    if path.lower().endswith(".wav"):
+        print("this is wav")
+        data, fs = lib.load(path)
+    elif path.lower().endswith(".mp3"):
+        print("this is mp3")
+    elif path.lower().endswith(".wma"):
+        print("this is flac")
+    elif path.lower().endswith(".aif") or path.lower().endswith(".aiff"):
+        print("this is aiff")
+    else:
+        print("このフォーマットは対応していません")
 
+    return data, fs
 
 ####test####
-gui()
-print(f"l_dev:{l_dev}")
-print(f"m_dev:{m_dev}")
-print(f"h_dev:{h_dev}")
-exit()
+#gui()
+#print(f"l_dev:{l_dev}")
+#print(f"m_dev:{m_dev}")
+#print(f"h_dev:{h_dev}")
+#exit()
 ####****####
 
 
@@ -485,10 +505,10 @@ def callback3(frame_count):
 def callback(frame_count,fc):
     global total1,total2,total3
     global start_pos, data, fs
-    global ex_buffer
+    global ex_buffer 
     global first_callback
     
-    # 切り出す(ステレオ->2行frame_count列　)
+    # 切り出す(ステレオ->2行frame_count列)
     output_data = data[:, start_pos:(start_pos + frame_count)]
 
     #フィルタリングデータ代入配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
@@ -665,22 +685,22 @@ def main():
     gui()
 
     #ストリーム(非同期処理),
-    t1 = th.Thread(target=play1)
+    #t1 = th.Thread(target=play1)
     t2 = th.Thread(target=play2)
-    t3 = th.Thread(target=play3)
-    t1.start()
+    #t3 = th.Thread(target=play3)
+    #t1.start()
     t2.start()
-    t3.start()
-    t1.join()
+    #t3.start()
+    #t1.join()
     t2.join()
-    t3.join()
+    #t3.join()
 
     p.terminate()
     
     #音声ファイル出力(テスト用　実際はいらない)
-    sf.write(f"{num}_output1.new.wav",total1.T,fs,format="wav")
+    #sf.write(f"{num}_output1.new.wav",total1.T,fs,format="wav")
     sf.write(f"{num}_output2.new.wav",total2.T,fs,format="wav")
-    sf.write(f"{num}_output3.new.wav",total3.T,fs,format="wav")
+    #sf.write(f"{num}_output3.new.wav",total3.T,fs,format="wav")
 
     """
     #終了処理

@@ -175,4 +175,8 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 
-*wav
+*.wav
+*.mp3
+ffmpeg.exe
+ffplay.exe
+ffprobe.exe

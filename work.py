@@ -6,6 +6,11 @@ import time
 from scipy import signal
 import threading as th
 import PySimpleGUI as sg
+from os import path
+from pydub import AudioSegment as AS
+from pydub.utils import mediainfo
+import tempfile as tf
+import os
 
 num = 1
 
@@ -19,10 +24,13 @@ def make_test_sound(freq):
     return wave
  
 # 音声ファイルパス
-path = "crystalized_1.wav"
+path = "crystalized.mp3"
 
 # 音声取得
-data, fs = lib.load(path,mono=False, sr=48000)
+# data, fs = lib.load(path,mono=False, sr=48000)
+data = 0
+fs = 0
+
 #data, fs = lib.load("crystalized_.5.wav", mono=False, sr=48000)
 
 # 初期化
@@ -236,9 +244,18 @@ def to_wav(path:str):
 
     if path.lower().endswith(".wav"):
         print("this is wav")
-        data, fs = lib.load(path)
+        data, fs = lib.load(path, mono=False, sr=None)
+
     elif path.lower().endswith(".mp3"):
         print("this is mp3")
+        mp3_data = AS.from_mp3(path)
+        info = mediainfo(path)
+        fs = info["sample_rate"]
+        with tf.TemporaryDirectory() as dirname:
+            print(dirname)
+            mp3_data.export(f"{dirname}/test_output.wav", format="wav",)
+            data, fs = lib.load(f"{dirname}/test_output.wav",mono=False,sr=None)
+
     elif path.lower().endswith(".wma"):
         print("this is flac")
     elif path.lower().endswith(".aif") or path.lower().endswith(".aiff"):
@@ -255,7 +272,6 @@ def to_wav(path:str):
 #print(f"h_dev:{h_dev}")
 #exit()
 ####****####
-
 
 """
 #再生関数(各々でストリームを開く)
@@ -674,15 +690,18 @@ def filter3(fc, data:np.ndarray):
 
 #main関数
 def main():
-    global fc
+    global fc, fs, data
     #カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
     fc = [0,700,7000,23999]
 
     #pyaudioインスタンス
     p = pa.PyAudio()
 
-    # guiより
+    # guiよりポート等々取得
     gui()
+
+    # データ取得と変換
+    data, fs = to_wav(path)
 
     #ストリーム(非同期処理),
     #t1 = th.Thread(target=play1)

@@ -11,6 +11,7 @@ from pydub import AudioSegment as AS
 from pydub.utils import mediainfo
 import tempfile as tf
 import os
+import ffmpeg
 
 num = 1
 
@@ -24,12 +25,12 @@ def make_test_sound(freq):
     return wave
  
 # 音声ファイルパス
-path = "crystalized.mp3"
+path = "ff-16b-2c-44100hz.wma"
 
 # 音声取得
 # data, fs = lib.load(path,mono=False, sr=48000)
 data = 0
-fs = 0
+fs = 48000
 
 #data, fs = lib.load("crystalized_.5.wav", mono=False, sr=48000)
 
@@ -246,22 +247,16 @@ def to_wav(path:str):
         print("this is wav")
         data, fs = lib.load(path, mono=False, sr=None)
 
-    elif path.lower().endswith(".mp3"):
-        print("this is mp3")
-        mp3_data = AS.from_mp3(path)
+    else:
+        print("this is not wav")
         info = mediainfo(path)
         fs = info["sample_rate"]
         with tf.TemporaryDirectory() as dirname:
             print(dirname)
-            mp3_data.export(f"{dirname}/test_output.wav", format="wav",)
-            data, fs = lib.load(f"{dirname}/test_output.wav",mono=False,sr=None)
-
-    elif path.lower().endswith(".wma"):
-        print("this is flac")
-    elif path.lower().endswith(".aif") or path.lower().endswith(".aiff"):
-        print("this is aiff")
-    else:
-        print("このフォーマットは対応していません")
+            t_stream = ffmpeg.input(path)
+            t_stream = ffmpeg.output(t_stream, f"{dirname}/test.wav")
+            ffmpeg.run(t_stream)
+            data, fs = lib.load(f"{dirname}/test.wav",mono=False,sr=None)
 
     return data, fs
 
@@ -691,8 +686,6 @@ def filter3(fc, data:np.ndarray):
 #main関数
 def main():
     global fc, fs, data
-    #カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
-    fc = [0,700,7000,23999]
 
     #pyaudioインスタンス
     p = pa.PyAudio()
@@ -702,6 +695,10 @@ def main():
 
     # データ取得と変換
     data, fs = to_wav(path)
+
+    #カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
+    fc = [0,700,7000,fs/2 - 1]
+
 
     #ストリーム(非同期処理),
     #t1 = th.Thread(target=play1)

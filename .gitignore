@@ -180,3 +180,4 @@ pyrightconfig.json
 ffmpeg.exe
 ffplay.exe
 ffprobe.exe
+*.wma

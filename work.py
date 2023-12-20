@@ -15,6 +15,8 @@ import ffmpeg
 
 num = 1
 
+target_fs = 48000
+
 # 試聴用音声生成(sin波440[hz]) return wave
 def make_test_sound(freq):
     length = 1
@@ -25,7 +27,7 @@ def make_test_sound(freq):
     return wave
  
 # 音声ファイルパス
-path = "ff-16b-2c-44100hz.wma"
+path = "crystalized_2.wav"
 
 # 音声取得
 # data, fs = lib.load(path,mono=False, sr=48000)
@@ -41,7 +43,7 @@ first3 = True
 last1 = True
 last2 = True
 last3 = True
-buffer_size = 48000
+buffer_size = target_fs
 ex_buffer1 = np.zeros((2,buffer_size))
 ex_buffer2 = np.zeros((2,buffer_size))
 ex_buffer3 = np.zeros((2,buffer_size))
@@ -55,8 +57,13 @@ wave1 = make_test_sound(440)
 wave2 = make_test_sound(880)
 wave3 = make_test_sound(7000)
 
+# 書き込み位置
+i1 = 0
+i2 = 0
+i3 = 0
+
 # カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
-fc = [0,700,7000,23999]
+fc = [0,700,7000,target_fs/2 - 1]
 
 # 出力配列(これにフィルタ後のデータをたしてく)
 total1 = np.zeros((2,buffer_size))
@@ -324,10 +331,13 @@ def play3():
 
 # 新コールバック関数(各々の中でフィルタしてそれを返す )
 def callback1(frame_count):
-    global s1,for_filter_array1,ex_buffer1,first1,total1,play_data1
+    global s1,for_filter_array1,ex_buffer1,first1,total1,play_data1,i1
 
     # 切り出し
-    output = data[:,s1:s1+frame_count]
+    output = data[:,s1:s1+fs]
+
+    # リサンプリング
+    output = lib.resample(y=output, orig_sr=fs, target_sr=target_fs)
 
     # フィルタリングデータ代入配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
     for_filter_array1 = np.hstack((ex_buffer1,output))
@@ -366,8 +376,8 @@ def callback1(frame_count):
             first1 = False
         else:
             total1 = np.append(total1,np.zeros(output.shape), axis=1)
-            total1[:,s1 - buffer_size:(s1 + int(for_filter_array1.shape[1]))] += filtered_data1
-            play_data1 = total1[:,s1 - buffer_size : s1].astype(np.float32)
+            total1[:,i1 - buffer_size:(i1 + int(for_filter_array1.shape[1]))] += filtered_data1
+            play_data1 = total1[:,i1 - buffer_size : i1].astype(np.float32)
 
         # 転置(行と列入れ替え[左1, 右1],[左2, 右2],・・・)
         play_data1 = play_data1.T
@@ -379,7 +389,10 @@ def callback1(frame_count):
         byte_data = play_data1.tobytes("C")
 
         # 切り出し位置更新
-        s1 += frame_count
+        s1 += fs
+
+        # 書き込み位置更新
+        i1 += target_fs
 
         # callback終了
         return (byte_data, pa.paContinue)
@@ -387,10 +400,13 @@ def callback1(frame_count):
         return (b'',pa.paContinue)  
 
 def callback2(frame_count):
-    global s2,for_filter_array2,ex_buffer2,first2,total2,play_data2
+    global s2,for_filter_array2,ex_buffer2,first2,total2,play_data2,i2
 
     # 切り出し
-    output = data[:,s2:s2+frame_count]
+    output = data[:,s2:s2+fs]
+
+    # リサンプリング
+    output = lib.resample(y=output, orig_sr=fs, target_sr=target_fs)
 
     # フィルタリングデータ代入配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
     for_filter_array2 = np.hstack((ex_buffer2,output))
@@ -424,13 +440,17 @@ def callback2(frame_count):
         filtered_data2 /= 2
 
         # 出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく 最終的には消していい デバッグ用)
+        print(f"total2:{total2.shape}")
+        print(f"filtered_data2:{filtered_data2.shape}")
+        print(f"i2:{i2}")
+        print(f"first2:{first2}")
         if first2:
-            total2[:,s2:(s2 + int(for_filter_array2.shape[1]))] += filtered_data2[:,buffer_size:]
+            total2[:,i2:(i2 + int(for_filter_array2.shape[1]))] += filtered_data2[:,buffer_size:]
             first2 = False
         else:
             total2 = np.append(total2,np.zeros(output.shape), axis=1)
-            total2[:,s2 - buffer_size:(s2 + int(for_filter_array2.shape[1]))] += filtered_data2
-            play_data2 = total2[:,s2 - buffer_size : s2].astype(np.float32)
+            total2[:,(i2 - buffer_size):(i2 + int(for_filter_array2.shape[1]))] += filtered_data2
+            play_data2 = total2[:,i2 - buffer_size : i2].astype(np.float32)
 
         # 転置(行と列入れ替え[左1, 右1],[左2, 右2],・・・)
         play_data2 = play_data2.T
@@ -442,7 +462,10 @@ def callback2(frame_count):
         byte_data = play_data2.tobytes("C")
 
         # 切り出し位置更新
-        s2 += frame_count
+        s2 += fs
+
+        # 書き込み位置更新
+        i2 += target_fs
 
         # callback終了
         return (byte_data, pa.paContinue)
@@ -450,10 +473,13 @@ def callback2(frame_count):
         return (b'',pa.paContinue)  
 
 def callback3(frame_count):
-    global s3,for_filter_array3,ex_buffer3,first3,total3,play_data3
+    global s3,for_filter_array3,ex_buffer3,first3,total3,play_data3,i3
 
     # 切り出し
-    output = data[:,s3:s3+frame_count]
+    output = data[:,s3:s3+fs]
+
+    # リサンプリング
+    output = lib.resample(y=output, orig_sr=fs, target_sr=target_fs)
 
     #フィルタリングデータ代入配列(前回バッファと今回バッファ結合->クロスフェード用に山なりに変化させる)
     for_filter_array3 = np.hstack((ex_buffer3,output))
@@ -487,12 +513,12 @@ def callback3(frame_count):
 
         #出力ファイルに追加(事前にバッファ分確保 1回のコールバックごとにバッファ分確保して、1バッファ分前から加算していく 最終的には消していい デバッグ用)
         if first3:
-            total3[:,s3:(s3 + int(for_filter_array3.shape[1]))] += filtered_data3[:,buffer_size:]
+            total3[:,i3:(i3 + int(for_filter_array3.shape[1]))] += filtered_data3[:,buffer_size:]
             first3 = False
         else:
             total3 = np.append(total3,np.zeros(output.shape), axis=1)
-            total3[:,s3 - buffer_size:(s3 + int(for_filter_array3.shape[1]))] += filtered_data3
-            play_data3 = total3[:,s3 - buffer_size : s3].astype(np.float32)
+            total3[:,i3 - buffer_size:(i3 + int(for_filter_array3.shape[1]))] += filtered_data3
+            play_data3 = total3[:,i3 - buffer_size : i3].astype(np.float32)
 
         # 転置(行と列入れ替え[左1, 右1],[左2, 右2],・・・)
         play_data3 = play_data3.T
@@ -504,7 +530,10 @@ def callback3(frame_count):
         byte_data = play_data3.tobytes("C")
 
         #切り出し位置更新
-        s3 += frame_count
+        s3 += fs
+
+        # 書き込み位置更新
+        i3 += target_fs
 
         #callback終了
         return (byte_data, pa.paContinue)
@@ -602,7 +631,7 @@ def play1():
     #p1 = pa.PyAudio()
     stream1 = p.open(format=pa.paFloat32,
                     channels=2,
-                    rate=fs,
+                    rate=target_fs,
                     output=True,
                     output_device_index=l_dev,
                     stream_callback=lambda a1,b1,c1,d1:callback1(b1),
@@ -621,7 +650,7 @@ def play2():
     #p2 = pa.PyAudio()
     stream2 = p.open(format=pa.paFloat32,
                     channels=2,
-                    rate=fs,
+                    rate=target_fs,
                     output=True,
                     output_device_index=m_dev,
                     stream_callback=lambda a2,b2,c2,d2:callback2(b2),
@@ -640,7 +669,7 @@ def play3():
     #p3 = pa.PyAudio()
     stream3 = p.open(format=pa.paFloat32,
                     channels=2,
-                    rate=fs,
+                    rate=target_fs,
                     output=True,
                     output_device_index=h_dev,
                     stream_callback=lambda a3,b3,c3,d3:callback3(b3),
@@ -658,7 +687,7 @@ def play3():
 #新フィルタ関数
 def filter1(fc, data:np.ndarray):
     
-    nyquist_freq = 0.5 * fs
+    nyquist_freq = 0.5 * target_fs
     normal_cutoff = fc[1] / nyquist_freq
     b, a = signal.butter(7, normal_cutoff, btype='low')
     filtered_signal = signal.filtfilt(b, a, data)
@@ -666,7 +695,7 @@ def filter1(fc, data:np.ndarray):
     return filtered_signal
 def filter2(fc, data:np.ndarray):
     
-    nyquist_freq = 0.5 * fs
+    nyquist_freq = 0.5 * target_fs
     normal_cutoff = fc[2] / nyquist_freq
     b, a = signal.butter(7, normal_cutoff, btype='low')
     filtered_signal = signal.filtfilt(b, a, data)
@@ -676,7 +705,7 @@ def filter2(fc, data:np.ndarray):
 
     return filtered_signal
 def filter3(fc, data:np.ndarray):
-    nyquist_freq = 0.5 * fs
+    nyquist_freq = 0.5 * target_fs
     normal_cutoff = fc[2] / nyquist_freq
     b, a = signal.butter(7, normal_cutoff, btype='high')
     filtered_signal = signal.filtfilt(b, a, data)
@@ -697,26 +726,26 @@ def main():
     data, fs = to_wav(path)
 
     #カットオフ周波数forスペクトル(最大周波数はサンプル周波数/2)
-    fc = [0,700,7000,fs/2 - 1]
+    fc = [0,700,7000,target_fs/2 - 1]
 
 
     #ストリーム(非同期処理),
-    #t1 = th.Thread(target=play1)
+    t1 = th.Thread(target=play1)
     t2 = th.Thread(target=play2)
-    #t3 = th.Thread(target=play3)
-    #t1.start()
+    t3 = th.Thread(target=play3)
+    t1.start()
     t2.start()
-    #t3.start()
-    #t1.join()
+    t3.start()
+    t1.join()
     t2.join()
-    #t3.join()
+    t3.join()
 
     p.terminate()
     
     #音声ファイル出力(テスト用　実際はいらない)
-    #sf.write(f"{num}_output1.new.wav",total1.T,fs,format="wav")
-    sf.write(f"{num}_output2.new.wav",total2.T,fs,format="wav")
-    #sf.write(f"{num}_output3.new.wav",total3.T,fs,format="wav")
+    sf.write(f"{num}_output1.new.wav",total1.T,fs,format="wav")
+    sf.write(f"{num}_output2.new.wav",total2.T,target_fs,format="wav")
+    sf.write(f"{num}_output3.new.wav",total3.T,fs,format="wav")
 
     """
     #終了処理

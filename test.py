@@ -15,62 +15,62 @@ from pydub.utils import mediainfo
 import tempfile as tf
 import os
 import ffmpeg
-def to_wav(path:str):
 
-    if path.lower().endswith(".wav"):
-        print("this is wav")
-        data, fs = lib.load(path,mono=False,sr=None)
-    else:
-        print("this is not wav")
-        info = mediainfo(path)
-        fs = info["sample_rate"]
-        with tf.TemporaryDirectory() as dirname:
-            print(dirname)
-            t_stream = ffmpeg.input(path)
-            t_stream = ffmpeg.output(t_stream, f"{dirname}/test.wav")
-            ffmpeg.run(t_stream)
-            data, fs = lib.load(f"{dirname}/test.wav",mono=False,sr=None)
+target_fs = 192000
+"""
+data, fs = lib.load("crystalized_1.wav",sr=None, mono=False)
+print(f"shape:{data.shape}")
+print(f"fs:{fs}")
 
-    # データ形式→<pydub.audio_segment.AudioSegment object at 0x0000015DDC6AFFD0>　これをwavに直せる？
-    """
-    elif path.lower().endswith(".mp3"):
-        print("this is mp3")
-        mp3_data = AS.from_mp3(path)
-        info = mediainfo(path)
-        fs = info["sample_rate"]
-        with tf.TemporaryDirectory() as dirname:
-            print(dirname)
-            mp3_data.export(f"{dirname}/test_output.wav", format="wav",)
-            data, fs = lib.load(f"{dirname}/test_output.wav",mono=False,sr=None)
+new_data = lib.resample(y=data, orig_sr=fs, target_sr=target_fs)
+print(new_data.shape)
 
-    elif path.lower().endswith(".wma"):
-        print("this is flac")
-    elif path.lower().endswith(".aif") or path.lower().endswith(".aiff"):
-        print("this is aiff")
-    else:
-        print("このフォーマットは対応していません")
-    """
+sf.write("resampled_1.wav", new_data.T, target_fs)
+"""
 
-    return data, fs
+data, fs = lib.load("crystalized.wav", sr=None, mono=False)
 
-path2 = "ff-16b-2c-44100hz.wma"
+s = 0
 
-#data1, fs1 = to_wav(path1)
-data2, fs2 = to_wav(path2)
+def callback(frame_count):
+    global s
+    print(frame_count)
 
-#print(f"wav_data:{data1}")
-#print(f"wav_fs:{fs1}")
-print(f"wav_data:{data2}")
-print(f"wav_fs:{fs2}")
+    output = data[:, s : s+fs]
+    output.astype(np.float32)
 
-#data1 = data1.T
-data2 = data2.T
+    print(output.dtype)
 
-#print(f"data1_shape:{data1.shape}")
-print(f"data2_shape:{data2.shape}")
-#byte_data = data1.tobytes("C")
-#sf.write("test_wav.wav",data1,fs1)
-#print("ok")
-byte_data = data2.tobytes("C")
-sf.write("test_mp3.wav",data2,fs2)
-print("okokl")
+    s += fs
+
+    output = lib.resample(y=output, orig_sr=fs, target_sr=target_fs)
+
+    print(output.shape)
+
+    tenti = output.T
+    raveled = np.ravel(tenti)
+    byte_data = raveled.tobytes("C")
+
+    return(byte_data, pa.paContinue)
+
+p = pa.PyAudio()
+
+l_dev = 13
+
+buffer_size = target_fs
+
+print(fs)
+
+stream = p.open(format=pa.paFloat32,
+                    channels=2,
+                    rate=target_fs,
+                    output=True,
+                    output_device_index=l_dev,
+                    stream_callback=lambda a1,b1,c1,d1:callback(b1),
+                    frames_per_buffer=buffer_size,
+                    )
+    
+while stream.is_active():
+    time.sleep(0.1)
+
+stream.close()
